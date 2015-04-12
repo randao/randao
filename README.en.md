@@ -58,17 +58,17 @@ paid by other contracts will be refund.
 
 #### Incentive
 RNG cycle is very short,  let's say 20 cycles in one hour, if one
-cycle's profit is 0.001% , the monthly rate of return is up to 0.00001 *
-20 * 24 * 30 = 0.144.
+cycle's profit is 0.001% , the monthly rate of return is up to `0.00001 *
+20 * 24 * 30 = 0.144`.
 Targeting to 14.4% monthly rate of return, and RNG has n participants in
-average, the running costs of contract is n * 3 * 500 * gasPrice +
-Ccost. (Ccost is gas consumed by contract internally, including
+average, the running costs of contract is `n * 3 * 500 * gasPrice +
+Ccost`. (Ccost is gas consumed by contract internally, including
 computing and storage, etc. )
 Assuming each random numbers has r time requests in average, the call
-price is p ETH, the income is r * p. So each participant will get (rp -
-1500n * gasPrice - Ccost) / n from one time participation.
+price is p ETH, the income is `r * p`. So each participant will get `(rp -
+1500n * gasPrice - Ccost) / n` from one time participation.
 The current gasPrice is 10 szabo, and estimate of contract consumption
-is 1500n gas, so estimate of net income is (rp / n - 0.03) ETH.
+is 1500n gas, so estimate of net income is `(rp / n - 0.03)` ETH.
 Assuming each RNG has 10 participation, and the pledge is 1000ETH, the
 minimum required income is 0.4 ETH, which over 0.001% profit in this
 case. So if the RNG requested only once, the service price is 0.4 ETH,
@@ -133,6 +133,9 @@ that person's membership will be ended and the dues will be confiscated.
 Now we can add an additional agreement to C1, C1 will only accept
 numbers committed by members whose level are high enough (membership
 dues over 1000 ETH). This will ensure that nobody has motive to attack.
+
+-----
+
 QA:
 
 Q: Why not let the miners participate in RNG? Why not use tx hash, nonce
