@@ -27,7 +27,7 @@ valid by running sha3 against s and comparing the result with previous
 committed data. Valid s will be saved to the collection of seeds to finally
 generate the random number.
 
-##### The third phase: calculating a random number, returning pledge and bonus
+##### The third phase: calculating a random number, refund pledged ETH and bonus
 1. After completion of the collection of all secret numbers, contract C
    will calculate the random number from the function f(s1,s2,...,sn), the result will be written to the storage of C, and the result will
 be send to all other contracts that request to the random number before.
@@ -39,6 +39,7 @@ other contracts that consume the random number.
 #### Additional rules
 In order to ensure the RNG can't be manipulated, and considering the
 safety and efficiency, the contract C has following additional rules:
+
 1. The first phase, if two or more same sha3(s) are committed in
    sequence, only accept the first one.
 2. The first phase, there is a requirement for minimum number of
@@ -46,9 +47,11 @@ safety and efficiency, the contract C has following additional rules:
 period, then RNG at this block height will fail.
 3. If a participant commit the sha3(s) and it accepted by contract C,
    he must reveal the s in the second phase.
-3.1 If the participant fails to reveal s in the second phase, then the m
+
+    3.1 If the participant fails to reveal s in the second phase, then the m
 ETH sent in the first phase will be confiscated, no return.
-3.2 If one or more s isn't revealed in the second phase, RNG at this
+
+    3.2 If one or more s isn't revealed in the second phase, RNG at this
 block height will fail. Confiscated ETHs will be divided equally and
 send to other participants who revealed s at the second phase.  The fees
 paid by other contracts will be refund.
