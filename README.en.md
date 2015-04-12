@@ -20,18 +20,16 @@ result of sha3(s), s is the secret number respective picked by
 participant.
 
 ##### The second phase: collecting valid s
-After the first phase, anyone who submitted sha3(s) successfully needs
+After the first phase, anyone who comitted sha3(s) successfully needs
 to send a transaction with the secret number s in the first stage to
 contract C in a specified time period. Contract C will check if s is
 valid by running sha3 against s and comparing the result with previous
-committed data. s will be saved to the collection of seeds to finally
+committed data. Valid s will be saved to the collection of seeds to finally
 generate the random number.
 
-##### The third phase: calculating a random number, returning pledge and
-bonus
+##### The third phase: calculating a random number, returning pledge and bonus
 1. After completion of the collection of all secret numbers, contract C
-   will calculate the random number from the function f (s1, s2, ...,
-sn), the result will be written to the storage of C, and the result will
+   will calculate the random number from the function f(s1,s2,...,sn), the result will be written to the storage of C, and the result will
 be send to all other contracts that request to the random number before.
 2. Contract C will send back the pledge to the participants in the first
    phase, and the profit divided into equal parts will be sent to all
@@ -113,11 +111,6 @@ C1 using two accounts, sending two sha3(s). if in a disadvantageous
 position, G will keep only one account's secret, and if only one
 participant expect G participate in C1, G will only lose 1000 ETH in C1,
 but G will get 1000 ETH as expected return, which is a worthy try.
-
-A program is a direct response confiscated amount confiscated is not
-returned to the participants as a reward, so that only a margin for
-random number 1000ETH contract to meet the requirements of the parity
-gamble.
 
 It can be fixed up by confiscating the pledged ETH, and not returns them
 to participants as bonus. so a contract with 1000 pledged ETH will meet
