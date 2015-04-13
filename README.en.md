@@ -80,7 +80,7 @@ request.
 The RANDAO acts as an infrastructure in Ethereum system. It called by
 other contracts. Contract for different purposes require different
 random numbers: some need high security, such as lottery; some need
-stable and timely, the request should be responded immediately, these
+stabilization and real-time, the request should be responded immediately, these
 contracts normally do not involve with interest; some need a callback,
 they want to receive a notification with random numbers when numbers are
 ready.
@@ -90,7 +90,7 @@ scenarios with only one RNG contract, so a lot of contracts will be
 created with different initial parameters, but the basic rules are same.
 
 For example, if we need high security, we can substantially increase the
-pledge of the first phase. Thus, the cost to lead to failure of RNG
+pledge of the first phase. Thus, the cost of leading to failure of RNG
 process by not revealing s is greatly increased. And for the contracts
 without much interest involved, the minimum number of participants and
 the ledge can be lower.
