@@ -80,8 +80,8 @@ request.
 The RANDAO acts as an infrastructure in Ethereum system. It called by
 other contracts. Contract for different purposes require different
 random numbers: some need high security, such as lottery; some need
-stabilization and real-time, the request should be responded immediately, these
-contracts normally do not involve with interest; some need a callback,
+steady responses and the request should be responded immediately, these
+contracts are normally low-value; some need a callback,
 they want to receive a notification with random numbers when numbers are
 ready.
 
