@@ -1,6 +1,6 @@
 contract Randao {
   struct Participant {
-    uint    secret;
+    uint64    secret;
     bytes32   commitment;
   }
   struct Campaign {

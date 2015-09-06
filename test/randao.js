@@ -1,7 +1,10 @@
 contract('Randao', function(accounts) {
-  it("should assert true", function(done) {
+  it("create a campaign", function(done) {
+    var secret = '123456';
     var randao = Randao.at(Randao.deployed_address);
-    assert.isTrue(true);
-    done();
+    console.log(randao.commit.value)
+    randao.commit.call(1000, web3.sha3(secret)).then(function(result){
+      assert.equal(result, true);
+    }).catch(done);
   });
 });
