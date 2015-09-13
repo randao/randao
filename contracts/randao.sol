@@ -14,26 +14,27 @@ contract Randao {
   mapping (uint => uint) public numbers;
   mapping (uint => Campaign) public campaigns;
 
-  uint constant commit_deadline = 6;
+  uint[10] public arr;
+  uint public constant commit_deadline = 6;
   uint constant commit_balkline = 12;
   uint constant earnest_eth     = 1 ether;
 
-  function commit (uint bnum, bytes32 hs) check_earnest returns (bool success) {
+  function Randao () {
+  }
+
+  function commit (uint bnum, bytes32 hs) check_earnest {
     if(block.number >= bnum - commit_balkline && block.number < bnum - commit_deadline){
       Campaign c = campaigns[bnum];
       Participant p = c.participants[msg.sender];
       p.commitment = hs;
-
-      return true;
-    } else {
-      return false;
     }
   }
 
-  function reveal (uint bunm, uint s) {
+  function reveal (uint bnum, uint s) {
   }
 
-  function random (uint bnum) {
+  function random (uint bnum) returns (uint num) {
+    return arr[0];
   }
 
   function watch (uint bnum) {
@@ -46,6 +47,7 @@ contract Randao {
       refund = msg.value;
     } else {
       refund = msg.value - earnest_eth;
+      arr[0] = refund;
       _
     }
 

@@ -3,7 +3,7 @@
 /* @preserve
  * The MIT License (MIT)
  * 
- * Copyright (c) 2014 Petka Antonov
+ * Copyright (c) 2013-2015 Petka Antonov
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,7 @@
  * 
  */
 /**
- * bluebird build version 2.9.34
+ * bluebird build version 2.10.0
  * Features enabled: core, race, call_get, generators, map, nodeify, promisify, props, reduce, settle, some, cancel, using, filter, any, each, timers
 */
 !function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.Promise=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof _dereq_=="function"&&_dereq_;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof _dereq_=="function"&&_dereq_;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
@@ -1082,6 +1082,8 @@ var debugging = false || (util.isNode &&
                     (!!process.env["BLUEBIRD_DEBUG"] ||
                      process.env["NODE_ENV"] === "development"));
 
+if (util.isNode && process.env["BLUEBIRD_DEBUG"] == 0) debugging = false;
+
 if (debugging) {
     async.disableTrampolineIfNecessary();
 }
@@ -1272,6 +1274,8 @@ Promise.prototype.thenReturn = function (value) {
             undefined,
             undefined
        );
+    } else if (value instanceof Promise) {
+        value._ignoreRejections();
     }
     return this._then(returner, undefined, undefined, value, undefined);
 };
@@ -2212,6 +2216,7 @@ if (util.isNode) {
 }
 util.notEnumerableProp(Promise, "_getDomain", getDomain);
 
+var UNDEFINED_BINDING = {};
 var async = _dereq_("./async.js");
 var errors = _dereq_("./errors.js");
 var TypeError = Promise.TypeError = errors.TypeError;
@@ -2496,7 +2501,9 @@ Promise.prototype._receiverAt = function (index) {
         ? this._receiver0
         : this[
             index * 5 - 5 + 4];
-    if (ret === undefined && this._isBound()) {
+    if (ret === UNDEFINED_BINDING) {
+        return undefined;
+    } else if (ret === undefined && this._isBound()) {
         return this._boundValue();
     }
     return ret;
@@ -2541,6 +2548,7 @@ Promise.prototype._migrateCallbacks = function (follower, index) {
     var promise = follower._promiseAt(index);
     var receiver = follower._receiverAt(index);
     if (promise instanceof Promise) promise._setIsMigrated();
+    if (receiver === undefined) receiver = UNDEFINED_BINDING;
     this._addCallbacks(fulfill, reject, progress, promise, receiver, null);
 };
 
@@ -4466,10 +4474,20 @@ module.exports = function (Promise, apiRejection, tryConvertToPromise,
                         "you must pass at least 2 arguments to Promise.using");
         var fn = arguments[len - 1];
         if (typeof fn !== "function") return apiRejection("fn must be a function\u000a\u000a    See http://goo.gl/916lJJ\u000a");
-        len--;
+
+        var input;
+        var spreadArgs = true;
+        if (len === 2 && Array.isArray(arguments[0])) {
+            input = arguments[0];
+            len = input.length;
+            spreadArgs = false;
+        } else {
+            input = arguments;
+            len--;
+        }
         var resources = new Array(len);
         for (var i = 0; i < len; ++i) {
-            var resource = arguments[i];
+            var resource = input[i];
             if (Disposer.isDisposer(resource)) {
                 var disposer = resource;
                 resource = resource.promise();
@@ -4493,7 +4511,8 @@ module.exports = function (Promise, apiRejection, tryConvertToPromise,
                 promise._pushContext();
                 var ret;
                 try {
-                    ret = fn.apply(undefined, vals);
+                    ret = spreadArgs
+                        ? fn.apply(undefined, vals) : fn.call(undefined,  vals);
                 } finally {
                     promise._popContext();
                 }
@@ -5198,44 +5217,36 @@ if(!(f instanceof e))return W&&C(26,"constructor call without new",t),new e(t,r)
 // The following line is to prevent errors in the browser.
 var module = module || undefined;
 
-(function(module) {
-  var __helpers = {
-    provision_contracts: function(scope) {
-      scope.__contracts = JSON.parse("{\n  \"Randao\": {\n    \"source\": \"/Users/i/workspace/ethereum/randao/contracts/Randao.sol\",\n    \"binary\": \"0x606060405261029b806100136000396000f30060606040523615610074576000357c010000000000000000000000000000000000000000000000000000000090048063109c5fed14610076578063141961bc146100895780639348cef7146100b0578063b863bd37146100c9578063d39fa233146100dc578063f2f038771461010357610074565b005b610087600480359060200150610297565b005b61009a60048035906020015061014b565b6040518082815260200191505060405180910390f35b6100c760048035906020018035906020015061028e565b005b6100da600480359060200150610293565b005b6100ed600480359060200150610130565b6040518082815260200191505060405180910390f35b61011a60048035906020018035906020015061016f565b6040518082815260200191505060405180910390f35b60006000506020528060005260406000206000915090505481565b60016000506020528060005260406000206000915090508060010160005054905081565b6000600060006000600060009150670de0b6b3a764000034101561019757349150815061023f565b670de0b6b3a7640000340391508150600c870343101580156101bb57506006870343105b15610229576001600050600088815260200190815260200160002060005093508360000160005060003373ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020600050925085836001016000508190555060019450505061028656610234565b600094505050610286565b600194505050610286565b3a606402905080821115610283573373ffffffffffffffffffffffffffffffffffffffff166000828403604051809050600060405180830381858888f19350505050505b50505b505092915050565b5b5050565b5b50565b5b5056\",\n    \"abi\": [\n      {\n        \"inputs\": [\n          {\n            \"type\": \"uint256\",\n            \"name\": \"bnum\"\n          }\n        ],\n        \"constant\": false,\n        \"name\": \"watch\",\n        \"outputs\": [],\n        \"type\": \"function\"\n      },\n      {\n        \"inputs\": [\n          {\n            \"type\": \"uint256\",\n            \"name\": \"\"\n          }\n        ],\n        \"constant\": true,\n        \"name\": \"campaigns\",\n        \"outputs\": [\n          {\n            \"type\": \"uint256\",\n            \"name\": \"reveals\"\n          }\n        ],\n        \"type\": \"function\"\n      },\n      {\n        \"inputs\": [\n          {\n            \"type\": \"uint256\",\n            \"name\": \"bunm\"\n          },\n          {\n            \"type\": \"uint256\",\n            \"name\": \"s\"\n          }\n        ],\n        \"constant\": false,\n        \"name\": \"reveal\",\n        \"outputs\": [],\n        \"type\": \"function\"\n      },\n      {\n        \"inputs\": [\n          {\n            \"type\": \"uint256\",\n            \"name\": \"bnum\"\n          }\n        ],\n        \"constant\": false,\n        \"name\": \"random\",\n        \"outputs\": [],\n        \"type\": \"function\"\n      },\n      {\n        \"inputs\": [\n          {\n            \"type\": \"uint256\",\n            \"name\": \"\"\n          }\n        ],\n        \"constant\": true,\n        \"name\": \"numbers\",\n        \"outputs\": [\n          {\n            \"type\": \"uint256\",\n            \"name\": \"\"\n          }\n        ],\n        \"type\": \"function\"\n      },\n      {\n        \"inputs\": [\n          {\n            \"type\": \"uint256\",\n            \"name\": \"bnum\"\n          },\n          {\n            \"type\": \"bytes32\",\n            \"name\": \"hs\"\n          }\n        ],\n        \"constant\": false,\n        \"name\": \"commit\",\n        \"outputs\": [\n          {\n            \"type\": \"bool\",\n            \"name\": \"success\"\n          }\n        ],\n        \"type\": \"function\"\n      }\n    ],\n    \"address\": \"0x66548b4ad6d6be74bc2dbb53ef8c4df0f7b671b3\"\n  }\n}");
+var __provisioner = {
+  provision_contracts: function(scope) {
+    scope.__contracts = JSON.parse("{\n  \"Randao\": {\n    \"source\": \"/Users/i/workspace/ethereum/randao/contracts/Randao.sol\",\n    \"binary\": \"0x60606040525b5b610300806100156000396000f3006060604052361561007f576000357c010000000000000000000000000000000000000000000000000000000090048063109c5fed14610081578063141961bc1461009457806371e5ee5f146100bb5780639348cef7146100e2578063b863bd37146100fb578063d39fa23314610122578063f2f03877146101495761007f565b005b6100926004803590602001506102fc565b005b6100a560048035906020015061017d565b6040518082815260200191505060405180910390f35b6100cc6004803590602001506101a1565b6040518082815260200191505060405180910390f35b6100f96004803590602001803590602001506102d2565b005b61010c6004803590602001506102d7565b6040518082815260200191505060405180910390f35b610133600480359060200150610162565b6040518082815260200191505060405180910390f35b6101606004803590602001803590602001506101bd565b005b60006000506020528060005260406000206000915090505481565b60016000506020528060005260406000206000915090508060010160005054905081565b600260005081600a811015610002579090016000915090505481565b600060006000600060009150670de0b6b3a76400003410156101e3573491508150610285565b670de0b6b3a76400003403915081506103e860026000506000600a8110156100025790900160005081905550600c8603431015801561022457506006860343105b15610284576001600050600087815260200190815260200160002060005093508360000160005060003373ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060005092508483600101600050819055505b5b3a6064029050808211156102c9573373ffffffffffffffffffffffffffffffffffffffff166000828403604051809050600060405180830381858888f19350505050505b50505b50505050565b5b5050565b600060026000506000600a811015610002579090016000505490506102f7565b919050565b5b5056\",\n    \"abi\": [\n      {\n        \"inputs\": [\n          {\n            \"type\": \"uint256\",\n            \"name\": \"bnum\"\n          }\n        ],\n        \"constant\": false,\n        \"name\": \"watch\",\n        \"outputs\": [],\n        \"type\": \"function\"\n      },\n      {\n        \"inputs\": [\n          {\n            \"type\": \"uint256\",\n            \"name\": \"\"\n          }\n        ],\n        \"constant\": true,\n        \"name\": \"campaigns\",\n        \"outputs\": [\n          {\n            \"type\": \"uint256\",\n            \"name\": \"reveals\"\n          }\n        ],\n        \"type\": \"function\"\n      },\n      {\n        \"inputs\": [\n          {\n            \"type\": \"uint256\",\n            \"name\": \"\"\n          }\n        ],\n        \"constant\": true,\n        \"name\": \"arr\",\n        \"outputs\": [\n          {\n            \"type\": \"uint256\",\n            \"name\": \"\"\n          }\n        ],\n        \"type\": \"function\"\n      },\n      {\n        \"inputs\": [\n          {\n            \"type\": \"uint256\",\n            \"name\": \"bnum\"\n          },\n          {\n            \"type\": \"uint256\",\n            \"name\": \"s\"\n          }\n        ],\n        \"constant\": false,\n        \"name\": \"reveal\",\n        \"outputs\": [],\n        \"type\": \"function\"\n      },\n      {\n        \"inputs\": [\n          {\n            \"type\": \"uint256\",\n            \"name\": \"bnum\"\n          }\n        ],\n        \"constant\": false,\n        \"name\": \"random\",\n        \"outputs\": [\n          {\n            \"type\": \"uint256\",\n            \"name\": \"num\"\n          }\n        ],\n        \"type\": \"function\"\n      },\n      {\n        \"inputs\": [\n          {\n            \"type\": \"uint256\",\n            \"name\": \"\"\n          }\n        ],\n        \"constant\": true,\n        \"name\": \"numbers\",\n        \"outputs\": [\n          {\n            \"type\": \"uint256\",\n            \"name\": \"\"\n          }\n        ],\n        \"type\": \"function\"\n      },\n      {\n        \"inputs\": [\n          {\n            \"type\": \"uint256\",\n            \"name\": \"bnum\"\n          },\n          {\n            \"type\": \"bytes32\",\n            \"name\": \"hs\"\n          }\n        ],\n        \"constant\": false,\n        \"name\": \"commit\",\n        \"outputs\": [],\n        \"type\": \"function\"\n      },\n      {\n        \"inputs\": [],\n        \"type\": \"constructor\"\n      }\n    ],\n    \"address\": \"0xe469ec100105d85a89a1f469a0355513ed69abbe\"\n  }\n}");
 
-      for (var key in scope.__contracts) {
-        var contract = scope.__contracts[key];
-        scope[key] = Pudding.whisk(contract.abi, contract.binary);
-        if (contract.address != null) {
-          scope[key].deployed_address = contract.address;
-        }
-      }
-    },
-    set_provider: function(scope) {
-      if ("localhost" != "" && "8545" != "") {
-        web3.setProvider(new web3.providers.HttpProvider("http://localhost:8545"));
-      } else {
-        web3.setProvider(
-          (function() {
-            return eval("");
-          })()
-        );
+    for (var key in scope.__contracts) {
+      var contract = scope.__contracts[key];
+      scope[key] = Pudding.whisk(contract.abi, contract.binary);
+      if (contract.address != null) {
+        scope[key].deployed_address = contract.address;
       }
     }
+  },
+  set_provider: function(scope) {
+    if ("localhost" != "" && "8545" != "") {
+      web3.setProvider(new web3.providers.HttpProvider("http://localhost:8545"));
+    } else {
+      
+    }
   }
+}
 
-  // If we're in the browser, call the helpers using the global
-  // (window) scope. If we're in node, export the helpers as a module.
-  if (module == undefined || module == null) {
-    __helpers.provision_contracts(window);
-    __helpers.set_provider(window);
-  } else {
-    module.exports = __helpers;
-  }
-})(module);
-
+// If we're in the browser, call the helpers using the global
+// (window) scope. If we're in node, export the helpers as a module.
+if (module != null) {
+  module.exports = __provisioner;
+}
+__provisioner.provision_contracts(window);
 
 
 
 var welcome_string = "Hello from Truffle!";
 console.log(welcome_string);
+; __provisioner.set_provider(window);
