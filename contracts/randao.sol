@@ -18,6 +18,7 @@ contract Randao {
   uint constant commit_deadline = 6;
   uint constant commit_balkline = 12;
   uint constant earnest_eth     = 10 ether;
+  uint public version = 1;
 
   function Randao () {
   }
@@ -57,10 +58,6 @@ contract Randao {
       }
     }
     return random;
-  }
-
-  function version () returns (uint8 ver){
-    return uint8(1);
   }
 
   function refund (uint rvalue) private {
