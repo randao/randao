@@ -59,7 +59,7 @@ contract Randao {
     Campaign c = campaigns[bnum];
     if(block.number >= bnum && c.reveals > 0 && c.reveals == c.paddresses.length){
       for (uint i = 0; i < c.paddresses.length; i++) {
-        random |= c.participants[c.paddresses[i]].secret;
+        random ^= c.participants[c.paddresses[i]].secret;
       }
     }
     return random;

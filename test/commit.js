@@ -1,5 +1,4 @@
 var Timecop = require('./helper/Timecop');
-//var sha3 = require('crypto-js/sha3');
 
 contract('Randao', function(accounts) {
   it("web3.sha3 should return same as Solidity's sha3", function(done) {
@@ -31,7 +30,7 @@ contract('Randao', function(accounts) {
           randao.random.call(height)
           .then((random) => {
             console.log('Current block height is: ' + web3.eth.blockNumber);
-            var expected = secrets.reduce((pre, cur) => {return web3.toDecimal(pre) | web3.toDecimal(cur)});
+            var expected = secrets.reduce((pre, cur) => {return web3.toDecimal(pre) ^ web3.toDecimal(cur)});
             assert.equal(expected, random.toNumber());
             done();
           });
