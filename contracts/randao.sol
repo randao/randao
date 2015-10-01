@@ -1,6 +1,6 @@
 contract Randao {
   struct Participant {
-    uint64    secret;
+    uint256   secret;
     bytes32   commitment;
   }
   struct Campaign {
@@ -35,11 +35,12 @@ contract Randao {
     }
   }
 
-  function reveal (uint bnum, uint64 s) external {
+  function reveal (uint bnum, uint256 s) external {
     if(block.number < bnum && block.number >= bnum - commit_deadline){
       Campaign c = campaigns[bnum];
 
       Participant p = c.participants[msg.sender];
+
       if(sha3(s) == p.commitment){
         if(p.secret != s){ c.reveals++; }
         p.secret = s;
@@ -47,6 +48,10 @@ contract Randao {
     } else {
       refund(msg.value);
     }
+  }
+
+  function reveals (uint bnum) returns (uint r){
+    return campaigns[bnum].reveals;
   }
 
   function random (uint bnum) constant returns (uint num) {
