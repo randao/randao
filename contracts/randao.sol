@@ -54,6 +54,10 @@ contract Randao {
     return campaigns[bnum].reveals;
   }
 
+  function test() returns (bytes32 rtn) {
+    return sha3(0x00, 0x00, 0x0002);
+  }
+
   function random (uint bnum) constant returns (uint num) {
     var random = uint(0);
     Campaign c = campaigns[bnum];
