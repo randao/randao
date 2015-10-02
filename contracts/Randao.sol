@@ -5,25 +5,26 @@ contract Randao {
   }
   struct Campaign {
     address[] paddresses;
+    uint16    reveals;
+    uint256   random;
     mapping (address => Participant) participants;
-    uint reveals;
   }
   struct Consumer {
     address addr;
   }
 
   //mapping (uint => uint) public numbers;
-  mapping (uint => Campaign) public campaigns;
+  mapping (uint32 => Campaign) public campaigns;
 
-  uint constant commit_deadline = 6;
-  uint constant commit_balkline = 12;
-  uint constant earnest_eth     = 10 ether;
-  uint public version = 1;
+  uint8  constant commit_deadline = 6;
+  uint8  constant commit_balkline = 12;
+  uint96 constant earnest_eth     = 10 ether;
+  uint8  public   version         = 1;
 
   function Randao () {
   }
 
-  function commit (uint bnum, bytes32 hs) external check_earnest {
+  function commit (uint32 bnum, bytes32 hs) external check_earnest {
     if(block.number >= bnum - commit_balkline && block.number < bnum - commit_deadline){
       Campaign c = campaigns[bnum];
 
@@ -35,7 +36,7 @@ contract Randao {
     }
   }
 
-  function reveal (uint bnum, uint256 s) external {
+  function reveal (uint32 bnum, uint256 s) external {
     if(block.number < bnum && block.number >= bnum - commit_deadline){
       Campaign c = campaigns[bnum];
 
@@ -50,7 +51,7 @@ contract Randao {
     }
   }
 
-  function reveals (uint bnum) returns (uint r){
+  function reveals (uint32 bnum) returns (uint r){
     return campaigns[bnum].reveals;
   }
 
@@ -58,7 +59,7 @@ contract Randao {
     return sha3(0x00, 0x00, 0x0002);
   }
 
-  function random (uint bnum) constant returns (uint num) {
+  function random (uint32 bnum) constant returns (uint num) {
     var random = uint(0);
     Campaign c = campaigns[bnum];
     if(block.number >= bnum && c.reveals > 0 && c.reveals == c.paddresses.length){
