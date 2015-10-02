@@ -6,11 +6,18 @@ contract Randao {
   struct Campaign {
     address[] paddresses;
     uint16    reveals;
+
     uint256   random;
+    bool      settled;
+    uint96    bountypot;
+
+    Consumer[] consumers;
+
     mapping (address => Participant) participants;
   }
   struct Consumer {
-    address addr;
+    address caddr;
+    bytes  cbname;
   }
 
   //mapping (uint => uint) public numbers;
@@ -18,13 +25,14 @@ contract Randao {
 
   uint8  constant commit_deadline = 6;
   uint8  constant commit_balkline = 12;
-  uint96 constant earnest_eth     = 10 ether;
+  uint96 constant deposit         = 10 ether;
+  uint96 constant callback_fee    = 100 finney;
   uint8  public   version         = 1;
 
   function Randao () {
   }
 
-  function commit (uint32 bnum, bytes32 hs) external check_earnest {
+  function commit (uint32 bnum, bytes32 hs) external check_deposit {
     if(block.number >= bnum - commit_balkline && block.number < bnum - commit_deadline){
       Campaign c = campaigns[bnum];
 
@@ -59,31 +67,84 @@ contract Randao {
     return sha3(0x00, 0x00, 0x0002);
   }
 
-  function random (uint32 bnum) constant returns (uint num) {
-    var random = uint(0);
+  function random (uint32 bnum) returns (uint num) {
     Campaign c = campaigns[bnum];
-    if(block.number >= bnum && c.reveals > 0 && c.reveals == c.paddresses.length){
-      for (uint i = 0; i < c.paddresses.length; i++) {
-        random ^= c.participants[c.paddresses[i]].secret;
+
+    if(block.number >= bnum) { // use campaign's random number
+      if(c.settled) {
+        return c.random;
+      } else {
+        settle(c);
+        return c.random;
+      }
+    } else { // register random number callback
+      // TODO: msg.sender or tx.origin ?
+      if(msg.value >= callback_fee) {
+        add2callback(c);
+        return 1;
+      } else {
+        refund(msg.value);
+        return 0;
       }
     }
-    return random;
+  }
+
+  function calculate(Campaign storage c) private {
+    for (uint i = 0; i < c.paddresses.length; i++) {
+      c.random ^= c.participants[c.paddresses[i]].secret;
+    }
+  }
+
+  function settle(Campaign storage c) private {
+    c.settled = true;
+
+    if(c.reveals > 0){
+      if(c.reveals == c.paddresses.length) calculate(c);
+
+      if(c.random > 0) callback(c);
+
+      refund_bounty(c);
+    }
+  }
+
+  function refund_bounty(Campaign storage c) private {
+    var fee = 100 * tx.gasprice;
+    var share = c.bountypot / c.reveals;
+
+    for (uint i = 0; i < c.paddresses.length; i++) {
+      c.paddresses[i].send(share - txfee());
+    }
+  }
+
+  function add2callback(Campaign storage c) private {
+    c.consumers[c.consumers.length++] = Consumer(msg.sender, msg.data);
+    c.bountypot += uint96(msg.value - txfee());
+  }
+
+  function callback(Campaign storage c) private {
+    for (uint i = 0; i < c.consumers.length; i++) {
+      var consumer = c.consumers[i];
+      consumer.caddr.call(consumer.cbname, c.random);
+    }
   }
 
   function refund (uint rvalue) private {
-    // refund
-    var fee = 100 * tx.gasprice;
-    if(rvalue > fee){
-      msg.sender.send(rvalue - fee);
+    // TODO: msg.sender or tx.origin ?
+    if(rvalue > txfee()){
+      msg.sender.send(rvalue - txfee());
     }
   }
 
-  modifier check_earnest {
+  function txfee () private returns (uint96 fee) {
+    return uint96(100 * tx.gasprice);
+  }
+
+  modifier check_deposit {
     var rvalue = uint256(0);
-    if(msg.value < earnest_eth) {
+    if(msg.value < deposit) {
       rvalue = msg.value;
     } else {
-      rvalue = msg.value - earnest_eth;
+      rvalue = msg.value - deposit;
       _
     }
 
