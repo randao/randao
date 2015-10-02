@@ -31,7 +31,31 @@ contract('Randao', function(accounts) {
     promise.then((result) => {
 
       // first participant will not reveal
-      secrets.shift();
+      secrets.pop();
+
+      Promise.all(secrets.map((secret, i) => { return randao.reveal(height, secret, {from: accounts[i]}); }))
+      .then((result) => {
+
+        Timecop.ff(3)
+        .then(() => {
+
+          randao.random.call(height)
+          .then( (random) => {
+            assert.equal(0, random.toNumber());
+            done();
+          });
+
+        })
+      });
+    });
+  });
+
+  it("participants will get commitment ethers back after generating random number", function(done) {
+    var [randao, secrets, height, promise] = utils.prepare4reveals(accounts);
+    promise.then((result) => {
+
+      // first participant will not reveal
+      secrets.pop();
 
       Promise.all(secrets.map((secret, i) => { return randao.reveal(height, secret, {from: accounts[i]}); }))
       .then((result) => {

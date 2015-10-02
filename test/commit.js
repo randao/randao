@@ -3,7 +3,7 @@ var utils = require('./helper/utils');
 
 contract('Randao', function(accounts) {
 
-  it("randao contract has commitment ethers", function(done) {
+  it("randao contract holds commitment ethers", function(done) {
     var [randao, secrets, height, promise] = utils.prepare4reveals(accounts);
 
     promise.then((result) => {

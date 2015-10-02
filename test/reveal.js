@@ -3,7 +3,7 @@ var utils = require('./helper/utils');
 
 contract('Randao', function(accounts) {
 
-  it.only("with correct reveals count", function(done) {
+  it("with correct reveals count", function(done) {
     var [randao, secrets, height, promise] = utils.prepare4reveals(accounts);
     promise.then((result) => {
 
