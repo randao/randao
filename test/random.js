@@ -1,7 +1,7 @@
 var Timecop = require('./helper/Timecop');
 var utils = require('./helper/utils');
 
-contract('Randao', function(accounts) {
+contract('Randao#random', function(accounts) {
 
   it("generate random number if all revealed", function(done) {
     var [randao, secrets, height, promise] = utils.prepare4reveals(accounts);

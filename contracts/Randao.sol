@@ -3,6 +3,10 @@ contract Randao {
     uint256   secret;
     bytes32   commitment;
   }
+  struct Consumer {
+    address caddr;
+    bytes  cbname;
+  }
   struct Campaign {
     address[] paddresses;
     uint16    reveals;
@@ -15,12 +19,7 @@ contract Randao {
 
     mapping (address => Participant) participants;
   }
-  struct Consumer {
-    address caddr;
-    bytes  cbname;
-  }
 
-  //mapping (uint => uint) public numbers;
   mapping (uint32 => Campaign) public campaigns;
 
   uint8  constant commit_deadline = 6;
@@ -36,14 +35,18 @@ contract Randao {
     if(block.number >= bnum - commit_balkline && block.number < bnum - commit_deadline){
       Campaign c = campaigns[bnum];
 
-      c.paddresses[c.paddresses.length++] = msg.sender;
-      Participant p = c.participants[msg.sender];
-      p.commitment = hs;
+      if(hs != "" && c.participants[msg.sender].commitment == ""){
+        c.paddresses[c.paddresses.length++] = msg.sender;
+        c.participants[msg.sender] = Participant(0, hs);
+      } else { // can't change commitment after commited
+        refund(msg.value);
+      }
     } else {
       refund(msg.value);
     }
   }
 
+  //TODO: allow reveal others secrets
   function reveal (uint32 bnum, uint256 s) external {
     if(block.number < bnum && block.number >= bnum - commit_deadline){
       Campaign c = campaigns[bnum];
@@ -54,8 +57,6 @@ contract Randao {
         if(p.secret != s){ c.reveals++; }
         p.secret = s;
       }
-    } else {
-      refund(msg.value);
     }
   }
 
