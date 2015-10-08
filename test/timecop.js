@@ -19,13 +19,4 @@ contract('Timecop fast forward', function(accounts) {
       done();
     });
   });
-
-  it("fast forward with incorrect params", (done) => {
-    var current = web3.eth.blockNumber;
-
-    Timecop.ff('abc').then((height)=>{
-      assert.equal(height - current, 0);
-      done();
-    });
-  });
 });

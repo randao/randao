@@ -28,6 +28,8 @@ contract Randao {
   uint96 constant callback_fee    = 100 finney;
   uint8  public   version         = 1;
 
+  bytes public debug;
+
   function Randao () {
   }
 
@@ -118,6 +120,7 @@ contract Randao {
   }
 
   function add2callback(Campaign storage c) private {
+    debug = msg.data;
     c.consumers[c.consumers.length++] = Consumer(msg.sender, msg.data);
     c.bountypot += uint96(msg.value - txfee());
   }
