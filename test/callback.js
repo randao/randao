@@ -14,13 +14,31 @@ contract('Randao#callback', function(accounts) {
       dice.randao(randao.address, bnum)
       .then((tx) => {
 
-        randao.debug.call()
-        .then((data) => {
+        var [randao, secrets, height, promise] = utils.prepare4reveals(accounts);
+        promise.then((result) => {
 
-          console.log(data);
-          done();
+          Promise.all(secrets.map((secret, i) => { return randao.reveal(height, secret, {from: accounts[i]}); }))
+          .then((result) => {
+
+            Timecop.ff(2)
+            .then(() => {
+
+              randao.random(height)
+              .then(() => {
+
+                randao.random.call(height)
+                .then((random) => {
+
+                  dice.random.call()
+                  .then((dicerandom) => {
+                    assert.equal(random.toNumber(), dicerandom.toNumber());
+                    done();
+                  });
+                });
+              });
+            })
+          });
         });
-
       });
     });
   });

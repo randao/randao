@@ -28,8 +28,6 @@ contract Randao {
   uint96 constant callback_fee    = 100 finney;
   uint8  public   version         = 1;
 
-  bytes public debug;
-
   function Randao () {
   }
 
@@ -66,20 +64,17 @@ contract Randao {
     return campaigns[bnum].reveals;
   }
 
-  function test() returns (bytes32 rtn) {
-    return sha3(0x00, 0x00, 0x0002);
+  function test() returns (bool) {
+    return true;
   }
 
   function random (uint32 bnum) returns (uint num) {
     Campaign c = campaigns[bnum];
 
     if(block.number >= bnum) { // use campaign's random number
-      if(c.settled) {
-        return c.random;
-      } else {
-        settle(c);
-        return c.random;
-      }
+      if(!c.settled) { settle(c); }
+
+      return c.random;
     } else { // register random number callback
       // TODO: msg.sender or tx.origin ?
       if(msg.value >= callback_fee) {
@@ -120,8 +115,7 @@ contract Randao {
   }
 
   function add2callback(Campaign storage c) private {
-    debug = msg.data;
-    c.consumers[c.consumers.length++] = Consumer(msg.sender, msg.data);
+    c.consumers[c.consumers.length++] = Consumer(msg.sender, slice(msg.data, 36, 4));
     c.bountypot += uint96(msg.value - txfee());
   }
 
@@ -141,6 +135,20 @@ contract Randao {
 
   function txfee () private returns (uint96 fee) {
     return uint96(100 * tx.gasprice);
+  }
+
+  function slice(bytes str, uint index, uint size) returns (bytes) {
+    bytes newstr;
+    uint rindex;
+    if(size == 0 || index + size >= str.length){
+      rindex = str.length;
+    } else {
+      rindex = index + size;
+    }
+    for(uint i=index; i< rindex; i++) {
+      newstr[newstr.length++] = str[i];
+    }
+    return newstr;
   }
 
   modifier check_deposit {
