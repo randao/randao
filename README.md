@@ -5,6 +5,8 @@ RANDAO: A DAO working as RNG of Ethereum
 
 ###随机数的重要性
 
+[![Join the chat at https://gitter.im/randao/randao](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/randao/randao?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 在一个确定性系统中生成随机数是一个非常困难的事情
 
 ###矿工不可信任!
