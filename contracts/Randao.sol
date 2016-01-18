@@ -138,15 +138,15 @@ contract Randao {
   }
 
   function slice(bytes str, uint index, uint size) returns (bytes) {
-    bytes newstr;
     uint rindex;
+    bytes memory newstr;
     if(size == 0 || index + size >= str.length){
       rindex = str.length;
     } else {
       rindex = index + size;
     }
     for(uint i=index; i< rindex; i++) {
-      newstr[newstr.length++] = str[i];
+      newstr[i-index] = str[i];
     }
     return newstr;
   }
