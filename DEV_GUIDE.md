@@ -1,5 +1,5 @@
 #requirements
-truffle
+truffle ~> 0.3.1
 pyethereum
 
 #development

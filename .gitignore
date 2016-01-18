@@ -1,2 +1,5 @@
-config/**/contracts.json
+environments
+
+!environments/**/config.json
+
 build/
