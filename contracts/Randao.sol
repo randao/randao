@@ -22,17 +22,21 @@ contract Randao {
 
   mapping (uint32 => Campaign) public campaigns;
 
-  uint8  constant commit_deadline = 6;
-  uint8  constant commit_balkline = 12;
-  uint96 constant deposit         = 10 ether;
-  uint96 constant callback_fee    = 100 finney;
-  uint8  public   version         = 1;
+  uint8  public commitDeadline;
+  uint8  public commitBalkline;
+  uint96 public deposit;
+  uint96 public callbackFee;
+  uint8  public constant version = 1;
 
-  function Randao () {
+  function Randao(uint8 _commitDeadline, uint8 _commitBalkline, uint96 _deposit, uint96 _callbackFee) {
+    commitDeadline = _commitDeadline;
+    commitBalkline = _commitBalkline;
+    deposit = _deposit;
+    callbackFee = _callbackFee;
   }
 
-  function commit (uint32 bnum, bytes32 hs) external check_deposit {
-    if(block.number >= bnum - commit_balkline && block.number < bnum - commit_deadline){
+  function commit(uint32 bnum, bytes32 hs) external checkDeposit {
+    if(block.number >= bnum - commitBalkline && block.number < bnum - commitDeadline){
       Campaign c = campaigns[bnum];
 
       if(hs != "" && c.participants[msg.sender].commitment == ""){
@@ -47,8 +51,8 @@ contract Randao {
   }
 
   //TODO: allow reveal others secrets
-  function reveal (uint32 bnum, uint256 s) external {
-    if(block.number < bnum && block.number >= bnum - commit_deadline){
+  function reveal(uint32 bnum, uint256 s) external {
+    if(block.number < bnum && block.number >= bnum - commitDeadline){
       Campaign c = campaigns[bnum];
 
       Participant p = c.participants[msg.sender];
@@ -60,7 +64,7 @@ contract Randao {
     }
   }
 
-  function reveals (uint32 bnum) returns (uint r){
+  function reveals(uint32 bnum) returns (uint r){
     return campaigns[bnum].reveals;
   }
 
@@ -68,7 +72,7 @@ contract Randao {
     return true;
   }
 
-  function random (uint32 bnum) returns (uint num) {
+  function random(uint32 bnum) returns (uint num) {
     Campaign c = campaigns[bnum];
 
     if(block.number >= bnum) { // use campaign's random number
@@ -77,7 +81,7 @@ contract Randao {
       return c.random;
     } else { // register random number callback
       // TODO: msg.sender or tx.origin ?
-      if(msg.value >= callback_fee) {
+      if(msg.value >= callbackFee) {
         add2callback(c);
         return 1;
       } else {
@@ -101,11 +105,11 @@ contract Randao {
 
       if(c.random > 0) callback(c);
 
-      refund_bounty(c);
+      refundBounty(c);
     }
   }
 
-  function refund_bounty(Campaign storage c) private {
+  function refundBounty(Campaign storage c) private {
     var fee = 100 * tx.gasprice;
     var share = c.bountypot / c.reveals;
 
@@ -126,14 +130,14 @@ contract Randao {
     }
   }
 
-  function refund (uint rvalue) private {
+  function refund(uint rvalue) private {
     // TODO: msg.sender or tx.origin ?
     if(rvalue > txfee()){
       msg.sender.send(rvalue - txfee());
     }
   }
 
-  function txfee () private returns (uint96 fee) {
+  function txfee() private returns (uint96 fee) {
     return uint96(100 * tx.gasprice);
   }
 
@@ -151,7 +155,7 @@ contract Randao {
     return newstr;
   }
 
-  modifier check_deposit {
+  modifier checkDeposit {
     var rvalue = uint256(0);
     if(msg.value < deposit) {
       rvalue = msg.value;
