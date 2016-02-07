@@ -11,7 +11,7 @@ contract('Randao#callback', function(accounts) {
     dice.deposit({value: web3.toWei('10', 'ether'), from: accounts[0]})
     .then((rtn)=>{
 
-      dice.randao(randao.address, bnum)
+      dice.randao(randao.address, bnum, 6, 12)
       .then((tx) => {
 
         var [randao, secrets, height, promise] = utils.prepare4reveals(accounts);
@@ -23,10 +23,10 @@ contract('Randao#callback', function(accounts) {
             Timecop.ff(2)
             .then(() => {
 
-              randao.random(height)
+              randao.random(height, 6, 12)
               .then(() => {
 
-                randao.random.call(height)
+                randao.random.call(height, 6, 12)
                 .then((random) => {
 
                   dice.random.call()

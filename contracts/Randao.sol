@@ -10,6 +10,8 @@ contract Randao {
   struct Campaign {
     address[] paddresses;
     uint16    reveals;
+    uint8     commitDeadline;
+    uint8     commitBalkline;
 
     uint256   random;
     bool      settled;
@@ -22,22 +24,16 @@ contract Randao {
 
   mapping (uint32 => Campaign) public campaigns;
 
-  uint8  public commitDeadline;
-  uint8  public commitBalkline;
-  uint96 public deposit;
-  uint96 public callbackFee;
+  uint96 public deposit          = 10 ether;
+  uint96 public callbackFee      = 100 finney;
   uint8  public constant version = 1;
 
-  function Randao(uint8 _commitDeadline, uint8 _commitBalkline, uint96 _deposit, uint96 _callbackFee) {
-    commitDeadline = _commitDeadline;
-    commitBalkline = _commitBalkline;
-    deposit = _deposit;
-    callbackFee = _callbackFee;
+  function Randao() {
   }
 
   function commit(uint32 _bnum, bytes32 _hs) external checkDeposit {
-    if(block.number >= _bnum - commitBalkline && block.number < _bnum - commitDeadline){
-      Campaign c = campaigns[_bnum];
+    Campaign c = campaigns[_bnum];
+    if(block.number >= _bnum - c.commitBalkline && block.number < _bnum - c.commitDeadline){
 
       if(_hs != "" && c.participants[msg.sender].commitment == ""){
         c.paddresses[c.paddresses.length++] = msg.sender;
@@ -52,8 +48,8 @@ contract Randao {
 
   //TODO: allow reveal others secrets
   function reveal(uint32 _bnum, uint256 _s) external {
-    if(block.number < _bnum && block.number >= _bnum - commitDeadline){
-      Campaign c = campaigns[_bnum];
+    Campaign c = campaigns[_bnum];
+    if(block.number < _bnum && block.number >= _bnum - c.commitDeadline){
 
       Participant p = c.participants[msg.sender];
 
@@ -72,8 +68,10 @@ contract Randao {
     return true;
   }
 
-  function random(uint32 _bnum) returns (uint) {
+  function random(uint32 _bnum, uint8 _commitDeadline, uint8 _commitBalkline) returns (uint) {
     Campaign c = campaigns[_bnum];
+    if(c.commitDeadline == 0){ c.commitDeadline = _commitDeadline; }
+    if(c.commitBalkline == 0){ c.commitBalkline =  _commitBalkline; }
 
     if(block.number >= _bnum) { // use campaign's random number
       if(!c.settled) { settle(c); }

@@ -13,7 +13,7 @@ contract('Randao#random', function(accounts) {
         Timecop.ff(3)
         .then(() => {
 
-          randao.random.call(height)
+          randao.random.call(height, 6, 12)
           .then( (random) => {
 
             var expected = secrets.reduce((pre, cur) => {return web3.toDecimal(pre) ^ web3.toDecimal(cur)});
@@ -39,7 +39,7 @@ contract('Randao#random', function(accounts) {
         Timecop.ff(3)
         .then(() => {
 
-          randao.random.call(height)
+          randao.random.call(height, 6, 12)
           .then( (random) => {
             assert.equal(0, random.toNumber());
             done();
@@ -63,7 +63,7 @@ contract('Randao#random', function(accounts) {
         Timecop.ff(3)
         .then(() => {
 
-          randao.random.call(height)
+          randao.random.call(height, 6, 12)
           .then( (random) => {
             assert.equal(0, random.toNumber());
             done();
