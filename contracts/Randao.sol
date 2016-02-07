@@ -35,13 +35,13 @@ contract Randao {
     callbackFee = _callbackFee;
   }
 
-  function commit(uint32 bnum, bytes32 hs) external checkDeposit {
-    if(block.number >= bnum - commitBalkline && block.number < bnum - commitDeadline){
-      Campaign c = campaigns[bnum];
+  function commit(uint32 _bnum, bytes32 _hs) external checkDeposit {
+    if(block.number >= _bnum - commitBalkline && block.number < _bnum - commitDeadline){
+      Campaign c = campaigns[_bnum];
 
-      if(hs != "" && c.participants[msg.sender].commitment == ""){
+      if(_hs != "" && c.participants[msg.sender].commitment == ""){
         c.paddresses[c.paddresses.length++] = msg.sender;
-        c.participants[msg.sender] = Participant(0, hs);
+        c.participants[msg.sender] = Participant(0, _hs);
       } else { // can't change commitment after commited
         refund(msg.value);
       }
@@ -51,31 +51,31 @@ contract Randao {
   }
 
   //TODO: allow reveal others secrets
-  function reveal(uint32 bnum, uint256 s) external {
-    if(block.number < bnum && block.number >= bnum - commitDeadline){
-      Campaign c = campaigns[bnum];
+  function reveal(uint32 _bnum, uint256 _s) external {
+    if(block.number < _bnum && block.number >= _bnum - commitDeadline){
+      Campaign c = campaigns[_bnum];
 
       Participant p = c.participants[msg.sender];
 
-      if(sha3(s) == p.commitment){
-        if(p.secret != s){ c.reveals++; }
-        p.secret = s;
+      if(sha3(_s) == p.commitment){
+        if(p.secret != _s){ c.reveals++; }
+        p.secret = _s;
       }
     }
   }
 
-  function reveals(uint32 bnum) returns (uint r){
-    return campaigns[bnum].reveals;
+  function reveals(uint32 _bnum) returns (uint r){
+    return campaigns[_bnum].reveals;
   }
 
   function test() returns (bool) {
     return true;
   }
 
-  function random(uint32 bnum) returns (uint num) {
-    Campaign c = campaigns[bnum];
+  function random(uint32 _bnum) returns (uint) {
+    Campaign c = campaigns[_bnum];
 
-    if(block.number >= bnum) { // use campaign's random number
+    if(block.number >= _bnum) { // use campaign's random number
       if(!c.settled) { settle(c); }
 
       return c.random;
@@ -91,42 +91,42 @@ contract Randao {
     }
   }
 
-  function calculate(Campaign storage c) private {
-    for (uint i = 0; i < c.paddresses.length; i++) {
-      c.random ^= c.participants[c.paddresses[i]].secret;
+  function calculate(Campaign storage _c) private {
+    for (uint i = 0; i < _c.paddresses.length; i++) {
+      _c.random ^= _c.participants[_c.paddresses[i]].secret;
     }
   }
 
-  function settle(Campaign storage c) private {
-    c.settled = true;
+  function settle(Campaign storage _c) private {
+    _c.settled = true;
 
-    if(c.reveals > 0){
-      if(c.reveals == c.paddresses.length) calculate(c);
+    if(_c.reveals > 0){
+      if(_c.reveals == _c.paddresses.length) calculate(_c);
 
-      if(c.random > 0) callback(c);
+      if(_c.random > 0) callback(_c);
 
-      refundBounty(c);
+      refundBounty(_c);
     }
   }
 
-  function refundBounty(Campaign storage c) private {
+  function refundBounty(Campaign storage _c) private {
     var fee = 100 * tx.gasprice;
-    var share = c.bountypot / c.reveals;
+    var share = _c.bountypot / _c.reveals;
 
-    for (uint i = 0; i < c.paddresses.length; i++) {
-      c.paddresses[i].send(share - txfee());
+    for (uint i = 0; i < _c.paddresses.length; i++) {
+      _c.paddresses[i].send(share - txfee());
     }
   }
 
-  function add2callback(Campaign storage c) private {
-    c.consumers[c.consumers.length++] = Consumer(msg.sender, slice(msg.data, 36, 4));
-    c.bountypot += uint96(msg.value - txfee());
+  function add2callback(Campaign storage _c) private {
+    _c.consumers[_c.consumers.length++] = Consumer(msg.sender, slice(msg.data, 36, 4));
+    _c.bountypot += uint96(msg.value - txfee());
   }
 
-  function callback(Campaign storage c) private {
-    for (uint i = 0; i < c.consumers.length; i++) {
-      var consumer = c.consumers[i];
-      consumer.caddr.call(consumer.cbname, c.random);
+  function callback(Campaign storage _c) private {
+    for (uint i = 0; i < _c.consumers.length; i++) {
+      var consumer = _c.consumers[i];
+      consumer.caddr.call(consumer.cbname, _c.random);
     }
   }
 
@@ -137,20 +137,20 @@ contract Randao {
     }
   }
 
-  function txfee() private returns (uint96 fee) {
+  function txfee() private returns (uint96) {
     return uint96(100 * tx.gasprice);
   }
 
-  function slice(bytes str, uint index, uint size) returns (bytes) {
+  function slice(bytes _str, uint _index, uint _size) returns (bytes) {
     uint rindex;
     bytes memory newstr;
-    if(size == 0 || index + size >= str.length){
-      rindex = str.length;
+    if(_size == 0 || _index + _size >= _str.length){
+      rindex = _str.length;
     } else {
-      rindex = index + size;
+      rindex = _index + _size;
     }
-    for(uint i=index; i< rindex; i++) {
-      newstr[i-index] = str[i];
+    for(uint i=_index; i< rindex; i++) {
+      newstr[i-_index] = _str[i];
     }
     return newstr;
   }
