@@ -8,6 +8,8 @@ contract Randao {
     bytes  cbname;
   }
   struct Campaign {
+    uint32    bnum;
+    uint96    deposit;
     address[] paddresses;
     uint16    reveals;
     uint8     commitDeadline;
@@ -22,18 +24,17 @@ contract Randao {
     mapping (address => Participant) participants;
   }
 
-  mapping (uint32 => Campaign) public campaigns;
+  mapping (bytes32 => Campaign) public campaigns;
 
-  uint96 public deposit          = 10 ether;
   uint96 public callbackFee      = 100 finney;
   uint8  public constant version = 1;
 
-  function Randao() {
-  }
+  function Randao() {}
 
-  function commit(uint32 _bnum, bytes32 _hs) external checkDeposit {
-    Campaign c = campaigns[_bnum];
-    if(block.number >= _bnum - c.commitBalkline && block.number < _bnum - c.commitDeadline){
+  function commit(bytes32 _key, bytes32 _hs) external {
+    Campaign c = campaigns[_key];
+
+    if(block.number >= c.bnum - c.commitBalkline && block.number < c.bnum - c.commitDeadline){
 
       if(_hs != "" && c.participants[msg.sender].commitment == ""){
         c.paddresses[c.paddresses.length++] = msg.sender;
@@ -47,9 +48,17 @@ contract Randao {
   }
 
   //TODO: allow reveal others secrets
-  function reveal(uint32 _bnum, uint256 _s) external {
-    Campaign c = campaigns[_bnum];
-    if(block.number < _bnum && block.number >= _bnum - c.commitDeadline){
+  function reveal(bytes32 _key, uint256 _s) external {
+    Campaign c = campaigns[_key];
+
+    uint256 rvalue;
+    if(msg.value < c.deposit) {
+      throw;
+    } else {
+      rvalue = msg.value - c.deposit;
+    }
+
+    if(block.number < c.bnum && block.number >= c.bnum - c.commitDeadline){
 
       Participant p = c.participants[msg.sender];
 
@@ -58,18 +67,17 @@ contract Randao {
         p.secret = _s;
       }
     }
+
+    refund(rvalue);
   }
 
-  function reveals(uint32 _bnum) returns (uint r){
-    return campaigns[_bnum].reveals;
+  function reveals(bytes32 _key) returns (uint){
+    return campaigns[_key].reveals;
   }
 
-  function test() returns (bool) {
-    return true;
-  }
-
-  function random(uint32 _bnum, uint8 _commitDeadline, uint8 _commitBalkline) returns (uint) {
-    Campaign c = campaigns[_bnum];
+  function random(uint32 _bnum, uint96 _deposit, uint8 _commitDeadline, uint8 _commitBalkline) returns (uint) {
+    var key = sha3(_bnum, _deposit, _commitDeadline, _commitBalkline);
+    Campaign c = campaigns[key];
     if(c.commitDeadline == 0){ c.commitDeadline = _commitDeadline; }
     if(c.commitBalkline == 0){ c.commitBalkline =  _commitBalkline; }
 
@@ -117,7 +125,7 @@ contract Randao {
   }
 
   function add2callback(Campaign storage _c) private {
-    _c.consumers[_c.consumers.length++] = Consumer(msg.sender, slice(msg.data, 36, 4));
+    _c.consumers[_c.consumers.length++] = Consumer(msg.sender, slice(msg.data, 148, 4));
     _c.bountypot += uint96(msg.value - txfee());
   }
 
@@ -151,17 +159,5 @@ contract Randao {
       newstr[i-_index] = _str[i];
     }
     return newstr;
-  }
-
-  modifier checkDeposit {
-    var rvalue = uint256(0);
-    if(msg.value < deposit) {
-      rvalue = msg.value;
-    } else {
-      rvalue = msg.value - deposit;
-      _
-    }
-
-    refund(rvalue);
   }
 }

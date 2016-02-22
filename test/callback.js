@@ -7,14 +7,17 @@ contract('Randao#callback', function(accounts) {
     var dice = Dice.at(Dice.deployed_address);
     var randao = Randao.at(Randao.deployed_address);
     var bnum = web3.eth.blockNumber + 12;
+    var deposit = web3.toWei('2', 'ether');
 
     dice.deposit({value: web3.toWei('10', 'ether'), from: accounts[0]})
     .then((rtn)=>{
 
-      dice.randao(randao.address, bnum, 6, 12)
+      dice.randao(randao.address, bnum, deposit, 6, 12)
       .then((tx) => {
 
         var [randao, secrets, height, promise] = utils.prepare4reveals(accounts);
+        var key = web3.sha3(height, deposit, 6, 12);
+
         promise.then((result) => {
 
           Promise.all(secrets.map((secret, i) => { return randao.reveal(height, secret, {from: accounts[i]}); }))
@@ -23,10 +26,10 @@ contract('Randao#callback', function(accounts) {
             Timecop.ff(2)
             .then(() => {
 
-              randao.random(height, 6, 12)
+              randao.random(height, deposit, 6, 12)
               .then(() => {
 
-                randao.random.call(height, 6, 12)
+                randao.random.call(height, deposit, 6, 12)
                 .then((random) => {
 
                   dice.random.call()
