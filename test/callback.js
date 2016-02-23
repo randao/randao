@@ -3,7 +3,7 @@ var utils = require('./helper/utils');
 
 contract('Randao#callback', function(accounts) {
 
-  it.only("other contract register a callback and send a bounty", function(done){
+  it("other contract register a callback and send a bounty", function(done){
     var dice = Dice.at(Dice.deployed_address);
     var randao = Randao.at(Randao.deployed_address);
     var bnum = web3.eth.blockNumber + 12;
@@ -19,8 +19,7 @@ contract('Randao#callback', function(accounts) {
         var key = web3.sha3(height, deposit, 6, 12);
 
         promise.then((result) => {
-
-          Promise.all(secrets.map((secret, i) => { return randao.reveal(height, secret, {from: accounts[i]}); }))
+          Promise.all(secrets.map((secret, i) => { return randao.reveal(key, secret, {from: accounts[i]}); }))
           .then((result) => {
 
             Timecop.ff(2)
