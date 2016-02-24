@@ -53,7 +53,7 @@ contract Randao {
 
     uint256 rvalue;
     if(msg.value < c.deposit) {
-      throw;
+      rvalue = msg.value;
     } else {
       rvalue = msg.value - c.deposit;
     }
@@ -95,6 +95,11 @@ contract Randao {
         return 0;
       }
     }
+  }
+
+  function getKey(uint32 _bnum, uint96 _deposit, uint8 _commitDeadline, uint8 _commitBalkline) returns (bytes32) {
+    var key = sha3(_bnum, _deposit, _commitDeadline, _commitBalkline);
+    return key;
   }
 
   function calculate(Campaign storage _c) private {
