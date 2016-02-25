@@ -4,37 +4,33 @@ var utils = require('./helper/utils');
 contract('Randao#random', function(accounts) {
 
   // TODO fix key
-  it.skip("generate random number if all revealed", function(done) {
-    var [randao, secrets, height, promise] = utils.prepare4reveals(accounts);
+  it.only("generate random number if all revealed", function(done) {
     var deposit = web3.toWei('2', 'ether');
+    var target_block = web3.eth.blockNumber + 12;
+    var randao = Randao.at(Randao.deployed_address);
 
-    promise.then(() => {
-      randao.getKey.call(height, deposit, 6, 12).then((key) => {
-        console.log(key);
-        console.log('str', parseInt(key));
-
-        Promise.all(secrets.map((secret, i) => { return randao.reveal(key, secret, {from: accounts[i]}); }))
-        .then(() => {
-
-          randao.reveals.call(key).then((reveals) => {
-            console.log('reveals:', reveals)
-          })
-
-          Timecop.ff(3)
+    randao.newCampaign.call(target_block, deposit, 6, 12)
+    .then((campaignID) => {
+      console.log('campaignID:', campaignID);
+      var [randao, secrets, height, promise] = utils.prepare4reveals(accounts, campaignID, target_block);
+      promise.then(() => {
+        Timecop.ff(3).then(() => {
+          Promise.all(secrets.map((secret, i) => { return randao.reveal(campaignID, secret, {from: accounts[i]}); }))
           .then(() => {
 
-            randao.random.call(height, deposit, 6, 12)
-            .then( (random) => {
-
-              var expected = secrets.reduce((pre, cur) => {return web3.toDecimal(pre) ^ web3.toDecimal(cur)});
-              assert.equal(expected, random.toNumber());
-              done();
-            });
-
-          })
-        });
-      })
-    });
+            Timecop.ff(7)
+            .then(() => {
+              randao.getRandom.call(campaignID)
+              .then((random) => {
+                var expected = secrets.reduce((pre, cur) => {return web3.toDecimal(pre) ^ web3.toDecimal(cur)});
+                assert.equal(expected, random.toNumber());
+                done();
+              });
+            })
+          });
+        })
+      });
+    })
   });
 
   it.skip("will not generate random number if anyone not reveal secret", function(done) {
