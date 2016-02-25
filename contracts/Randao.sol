@@ -10,29 +10,31 @@ contract Randao {
   struct Campaign {
     uint32    bnum;
     uint96    deposit;
-    address[] paddresses;
-    uint16    reveals;
     uint8     commitDeadline;
     uint8     commitBalkline;
 
+    uint16    reveals;
     uint256   random;
     bool      settled;
     uint96    bountypot;
 
     Consumer[] consumers;
-
+    address[] paddresses;
     mapping (address => Participant) participants;
   }
 
-  mapping (bytes32 => Campaign) public campaigns;
+  uint public numCampaigns;
+  mapping (uint => Campaign) public campaigns;
 
   uint96 public callbackFee      = 100 finney;
   uint8  public constant version = 1;
 
+  event CampaignAdded(uint campaignID, uint32 bnum, uint96 deposit, uint8 commitDeadline, uint8 commitBalkline);
+
   function Randao() {}
 
-  function commit(bytes32 _key, bytes32 _hs) external {
-    Campaign c = campaigns[_key];
+  function commit(uint _campaignID, bytes32 _hs) external {
+    Campaign c = campaigns[_campaignID];
 
     if(block.number >= c.bnum - c.commitBalkline && block.number < c.bnum - c.commitDeadline){
 
@@ -48,8 +50,8 @@ contract Randao {
   }
 
   //TODO: allow reveal others secrets
-  function reveal(bytes32 _key, uint256 _s) external {
-    Campaign c = campaigns[_key];
+  function reveal(uint _campaignID, uint256 _s) external {
+    Campaign c = campaigns[_campaignID];
 
     uint256 rvalue;
     if(msg.value < c.deposit) {
@@ -71,17 +73,29 @@ contract Randao {
     refund(rvalue);
   }
 
-  function reveals(bytes32 _key) returns (uint){
-    return campaigns[_key].reveals;
+  function newCampaign(uint32 _bnum, uint96 _deposit, uint8 _commitDeadline, uint8 _commitBalkline) returns (uint _campaignID) {
+    _campaignID = numCampaigns++;
+    Campaign c = campaigns[_campaignID];
+    c.bnum = _bnum;
+    c.deposit = _deposit;
+    c.commitDeadline = _commitDeadline;
+    c.commitBalkline = _commitBalkline;
+
+    CampaignAdded(_campaignID, _bnum, _deposit, _commitDeadline, _commitBalkline);
   }
 
-  function random(uint32 _bnum, uint96 _deposit, uint8 _commitDeadline, uint8 _commitBalkline) returns (uint) {
-    var key = sha3(_bnum, _deposit, _commitDeadline, _commitBalkline);
-    Campaign c = campaigns[key];
-    if(c.commitDeadline == 0){ c.commitDeadline = _commitDeadline; }
-    if(c.commitBalkline == 0){ c.commitBalkline =  _commitBalkline; }
+  function checkSettled(uint _campaignID) returns (bool settled) {
+    Campaign c = campaigns[_campaignID];
+    if(block.number >= c.bnum) {
+      if(!c.settled) { settle(c); }
+    }
+    return c.settled;
+  }
 
-    if(block.number >= _bnum) { // use campaign's random number
+  function getRandom(uint _campaignID) returns (uint256) {
+    Campaign c = campaigns[0];
+
+    if(block.number >= c.bnum) { // use campaign's random number
       if(!c.settled) { settle(c); }
 
       return c.random;
@@ -89,17 +103,12 @@ contract Randao {
       // TODO: msg.sender or tx.origin ?
       if(msg.value >= callbackFee) {
         add2callback(c);
-        return 1;
+        return c.random;
       } else {
         refund(msg.value);
-        return 0;
+        return c.random;
       }
     }
-  }
-
-  function getKey(uint32 _bnum, uint96 _deposit, uint8 _commitDeadline, uint8 _commitBalkline) returns (bytes32) {
-    var key = sha3(_bnum, _deposit, _commitDeadline, _commitBalkline);
-    return key;
   }
 
   function calculate(Campaign storage _c) private {
