@@ -1,0 +1,7 @@
+=============== Feb 25, 2016 (CST) ===============
+16:28:15.673612 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+16:28:15.674101 db@open opening
+16:28:15.674233 journal@recovery F·1
+16:28:15.675015 journal@recovery recovering @11
+16:28:15.676537 db@janitor F·3 G·0
+16:28:15.676568 db@open done T·2.445798ms

@@ -3,3 +3,7 @@ environments
 !environments/**/config.json
 
 build/
+
+data/
+
+geth-test/out.log.geth
