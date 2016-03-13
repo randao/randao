@@ -1,8 +1,0 @@
-=============== Feb 25, 2016 (CST) ===============
-15:47:32.393216 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
-15:47:32.396118 db@open opening
-15:47:32.396255 journal@recovery F·1
-15:47:32.396572 journal@recovery recovering @1
-15:47:32.400942 mem@flush created L0@2 N·1 S·132B "set..ion,v1":"set..ion,v1"
-15:47:32.407686 db@janitor F·3 G·0
-15:47:32.407739 db@open done T·11.593446ms

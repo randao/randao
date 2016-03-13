@@ -7,3 +7,4 @@ build/
 data/
 
 geth-test/out.log.geth
+geth-test/data/
