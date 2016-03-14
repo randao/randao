@@ -1,7 +1,7 @@
 Tests for some of the functaionality incorperated in the smart contract.
 
 Start geth with
-    geth --dev --mine --genesis genesis_block.json --datadir ./data  console 2>> out.log.geth
+    geth --dev --genesis genesis_block.json --datadir ./data  console 2>> out.log.geth
 The genesis file has ether assigned to the accounts in ./data/keystore this provides ether for testing.
 To unlock these accounts use "Write here a good, randomly generated, passphrase!" with the double quoates excluded. each script do this automatically.
 

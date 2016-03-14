@@ -49,7 +49,6 @@ contract Randao {
     }
   }
 
-  //TODO: allow reveal others secrets
   function reveal(uint _campaignID, uint256 _s) external {
     Campaign c = campaigns[_campaignID];
 
@@ -71,6 +70,12 @@ contract Randao {
     }
 
     refund(rvalue);
+  }
+
+  function getCommitment(uint _campaignID) external returns (bytes32) {
+    Campaign c = campaigns[_campaignID];
+    Participant p = c.participants[msg.sender];
+    return p.commitment;
   }
 
   function newCampaign(uint32 _bnum, uint96 _deposit, uint8 _commitDeadline, uint8 _commitBalkline) returns (uint _campaignID) {
