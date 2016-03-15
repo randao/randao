@@ -8,5 +8,6 @@ data/
 
 geth-test/out.log.geth
 geth-test/data/
+!geth-test/data/keystore/*.*
 
 out.log.geth
