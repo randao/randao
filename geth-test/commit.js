@@ -13,4 +13,4 @@ console.log('commit at blockNumber: ', web3.eth.blockNumber);
 miner.start(); admin.sleepBlocks(1); miner.stop();
 console.log('campaigns: ', randao.campaigns.call());
 // TODO: wrong commitment
-console.log('get commitment: ', randao.getCommitment.call());
+console.log('get commitment: ', randao.getCommitment.call(campaignID));

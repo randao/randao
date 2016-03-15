@@ -23,7 +23,7 @@ contract Randao {
     mapping (address => Participant) participants;
   }
 
-  uint public numCampaigns;
+  uint32 public numCampaigns;
   mapping (uint => Campaign) public campaigns;
 
   uint96 public callbackFee      = 100 finney;
@@ -33,7 +33,7 @@ contract Randao {
 
   function Randao() {}
 
-  function commit(uint _campaignID, bytes32 _hs) external {
+  function commit(uint32 _campaignID, bytes32 _hs) external {
     Campaign c = campaigns[_campaignID];
 
     if(block.number >= c.bnum - c.commitBalkline && block.number < c.bnum - c.commitDeadline){
@@ -49,7 +49,7 @@ contract Randao {
     }
   }
 
-  function reveal(uint _campaignID, uint256 _s) external {
+  function reveal(uint32 _campaignID, uint256 _s) external {
     Campaign c = campaigns[_campaignID];
 
     uint256 rvalue;
@@ -72,13 +72,13 @@ contract Randao {
     refund(rvalue);
   }
 
-  function getCommitment(uint _campaignID) external returns (bytes32) {
+  function getCommitment(uint32 _campaignID) external returns (bytes32) {
     Campaign c = campaigns[_campaignID];
     Participant p = c.participants[msg.sender];
     return p.commitment;
   }
 
-  function newCampaign(uint32 _bnum, uint96 _deposit, uint8 _commitDeadline, uint8 _commitBalkline) returns (uint _campaignID) {
+  function newCampaign(uint32 _bnum, uint96 _deposit, uint8 _commitDeadline, uint8 _commitBalkline) returns (uint32 _campaignID) {
     _campaignID = numCampaigns++;
     Campaign c = campaigns[_campaignID];
     c.bnum = _bnum;
@@ -89,7 +89,7 @@ contract Randao {
     CampaignAdded(_campaignID, _bnum, _deposit, _commitDeadline, _commitBalkline);
   }
 
-  function checkSettled(uint _campaignID) returns (bool settled) {
+  function checkSettled(uint32 _campaignID) returns (bool settled) {
     Campaign c = campaigns[_campaignID];
     if(block.number >= c.bnum) {
       if(!c.settled) { settle(c); }
@@ -97,7 +97,7 @@ contract Randao {
     return c.settled;
   }
 
-  function getRandom(uint _campaignID) returns (uint256) {
+  function getRandom(uint32 _campaignID) returns (uint256) {
     Campaign c = campaigns[0];
 
     if(block.number >= c.bnum) { // use campaign's random number
