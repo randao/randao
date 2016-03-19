@@ -1,0 +1,57 @@
+/* ==========================================================================
+   Component: Button
+ ============================================================================ */
+
+/*
+ * 将按钮样式一致化，重置无用的样式
+ */
+
+.btn {
+  @include button-size($btn-width, $btn-height, $font-size-small, 2px);
+  display: inline-block;
+  padding: 0;
+  border: 1px solid transparent;
+  font-weight: normal;
+  text-align: center;
+  white-space: nowrap;
+  user-select: none;
+  cursor: pointer;
+  transition: all .2s ease-in-out;
+
+  &:hover,
+  &:focus {
+    text-decoration: none;
+  }
+
+  &:active,
+  &:focus {
+    outline: 0;
+    background-image: none;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: .65;
+  }
+}
+
+.btn-block {
+  display: block;
+  width: 100%;
+}
+
+/*
+ * 实心按钮
+ */
+
+.btn-primary {
+  @include button-variant($btn-primary-color, $btn-primary-bg);
+}
+
+/*
+ * 空心按钮
+ */
+
+ .btn-primary-outline {
+   @include button-outline-variant($btn-primary-bg);
+ }

@@ -1,0 +1,61 @@
+/* ==========================================================================
+   Component: Form
+ ============================================================================ */
+
+ .form-group {
+    margin-bottom: $form-group-margin-bottom;
+
+    &.last {
+      margin-bottom: 0;
+    }
+
+   label {
+     display: inline-block;
+     margin-bottom: .5rem
+   }
+ }
+
+/*
+ * 将表单输入框样式一致化，重置无用的样式
+ */
+
+.form-control {
+  @include form-control-size(74%, auto, $input-padding-y, $input-padding-x, $font-size-small, $input-line-height);
+  @include form-control-variant($input-color, $input-border-color, $input-bg);
+  background-image: none;
+  transition: border-color ease-in-out .15s;
+
+  &:focus {
+    border-color: $input-border-focus;
+    outline: none;
+  }
+
+  &:disabled,
+  &[readonly] {
+    background-color: $input-bg-disabled;
+    // iOS fix for unreadable disabled content; see https://github.com/twbs/bootstrap/issues/11655.
+    opacity: 1;
+
+    &:focus {
+      border-color: $input-border-color;
+      outline: none;
+    }
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+
+  // Placeholder
+  &::placeholder {
+    color: $input-color-placeholder;
+    // Override Firefox's unusual default opacity; see https://github.com/twbs/bootstrap/pull/11526.
+    opacity: 1;
+  }
+
+  // Unstyle the caret on `<select>`s in IE10+.
+  &::-ms-expand {
+    background-color: transparent;
+    border: 0;
+  }
+}

@@ -1,0 +1,72 @@
+/* ==========================================================================
+   Mixins: Components/Button
+ ============================================================================ */
+
+/*
+ * 设置实心按钮样式
+ */
+
+@mixin button-variant($color, $background-color) {
+  color: $color;
+  background-color: $background-color;
+
+  &:hover,
+  &:focus,
+  &:active {
+    background-color: darken($background-color, 10%);
+  }
+
+  &:disabled {
+    background-color: lighten($background-color, 15%);
+
+    &:hover,
+    &:focus,
+    &:active {
+      background-color: lighten($background-color, 15%);
+    }
+  }
+}
+
+/*
+ * 设置空心按钮样式
+ */
+
+@mixin button-outline-variant($color) {
+  border-color: $color;
+  color: $color;
+  background-image: none;
+  background-color: transparent;
+
+  &:hover,
+  &:focus,
+  &:active {
+    color: #fff;
+    background-color: $color;
+  }
+
+  &:disabled {
+    color: lighten($color, 15%);
+    border-color: lighten($color, 15%);
+    background-color: transparent;
+
+    &:hover,
+    &:focus,
+    &:active {
+      color: lighten($color, 15%);
+      border-color: lighten($color, 15%);
+      background-color: transparent;
+    }
+  }
+}
+
+/*
+ * 设置按钮尺寸
+ */
+
+@mixin button-size($width, $height, $font-size, $border-radius: 2px) {
+  width: $width;
+  height: $height;
+  border-radius: $border-radius;
+  font-size: $font-size;
+  line-height: $height;
+}

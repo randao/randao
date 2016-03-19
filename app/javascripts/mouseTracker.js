@@ -4,7 +4,7 @@ import Progress from './progress'
 let mouseTracker = {
   "max": 30,
   "count": 0,
-  "string": "",
+  "string": "Your address: ",
   "generating": false,
   "mouseInside": false,
   "chars": "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
@@ -52,6 +52,8 @@ let mouseTracker = {
 
         Progress.growth()
       } else {
+        $('#code').addClass('active')
+        $('.send-address').addClass('show')
         this.generating = false
       }
     }

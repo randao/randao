@@ -1,5 +1,28 @@
 $brand-color: #657DAD;
 
+$form-group-margin-bottom: 1rem !default;
+$input-line-height: 1.5 !default;
+$input-padding-x: 0.75rem !default;
+$input-padding-y: 0.375rem !default;
+$input-bg: transparent !default;
+$input-bg-disabled: #ccc !default;
+$input-color: $brand-color !default;
+$input-border-color: $brand-color !default;
+
+$input-border-focus: darken($input-border-color, 5%) !default;
+$input-color-placeholder: #999 !default;
+
+$btn-width: 120px !default;
+$btn-height: 46px !default;
+$btn-primary-color: #fff !default;
+$btn-primary-bg: $brand-color !default;
+$font-size-small: 14px !default;
+
+@import "form-mixin";
+@import "form-components";
+@import "button-mixin";
+@import "button-components";
+
 html,
 body {
   width: 100%;
@@ -64,6 +87,11 @@ body {
     .code {
       color: lighten($brand-color, 15%);
       text-align: center;
+      transition: color 0.3s ease-in-out;
+
+      &.active {
+        color: lighten($brand-color, 2%);
+      }
     }
 
     .randao-box {
@@ -78,6 +106,19 @@ body {
       .randao-progress-wrapper {
         width: 74px;
         color: $brand-color;
+      }
+    }
+
+    .send-address {
+      display: flex;
+      justify-content: space-between;
+      transform: translateY(36px);
+      opacity: 0;
+      transition: all 1.5s ease-in-out;
+
+      &.show {
+        transform: translateY(0);
+        opacity: 1;
       }
     }
   }

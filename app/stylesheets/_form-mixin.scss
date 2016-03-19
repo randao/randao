@@ -1,0 +1,36 @@
+/* ==========================================================================
+   Mixins: Components/Form
+ ============================================================================ */
+
+/*
+ * 设置表单输入框颜色
+ */
+
+@mixin form-control-variant($color, $border-color, $background-color: #fff) {
+  border: 1px solid $border-color;
+  color: $color;
+  background-color: $background-color;
+}
+
+/*
+ * 设置表单输入框大小
+ */
+
+@mixin form-control-size($width, $height, $padding-vertical, $padding-horizontal, $font-size, $line-height, $border-radius: 2px) {
+  width: $width;
+  height: $height;
+  padding: $padding-vertical $padding-horizontal;
+  font-size: $font-size;
+  line-height: $line-height;
+  border-radius: $border-radius;
+
+  & select {
+    height: $height;
+    line-height: $height;
+  }
+
+  & textarea,
+  & select[multiple] {
+    height: auto;
+  }
+}
