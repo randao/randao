@@ -28,7 +28,7 @@ body {
   width: 100%;
   height: 100%;
   margin: 0;
-  font-family: sans-serif;
+  font-family: 'Open Sans', sans-serif;
 
   a {
     text-decoration: none;
@@ -59,6 +59,7 @@ body {
       margin: 0;
       font-weight: normal;
       color: $brand-color;
+      letter-spacing: 2px;
     }
     nav {
       a {
@@ -115,6 +116,12 @@ body {
       transform: translateY(36px);
       opacity: 0;
       transition: all 1.5s ease-in-out;
+
+      .form-control {
+        &::-webkit-input-placeholder {
+          color: $brand-color;
+        }
+      }
 
       &.show {
         transform: translateY(0);
