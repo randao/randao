@@ -1,20 +1,17 @@
+$brand-color: #657DAD;
+
 html,
 body {
   width: 100%;
   height: 100%;
   margin: 0;
-
-  h1, h2, p, span, a {
-    font-family: sans-serif;
-  }
+  font-family: sans-serif;
 
   a {
     text-decoration: none;
-    transition: color .3s ease-in-out;
+    transition: color 0.3s ease-in-out;
   }
 }
-
-$brand-color: #657DAD;
 
 .landing {
   width: 100%;
@@ -23,7 +20,6 @@ $brand-color: #657DAD;
   background-position: center bottom;
   background-size: cover;
   background-repeat: no-repeat;
-
   .navbar {
     display: flex;
     justify-content: space-between;
@@ -31,18 +27,15 @@ $brand-color: #657DAD;
     height: 80px;
     margin: 0 auto;
     line-height: 80px;
-
     .logo {
       margin: 0;
       font-weight: normal;
       color: $brand-color;
     }
-
     nav {
       a {
         margin-left: 4em;
         color: $brand-color;
-
         &:hover {
           color: darken($brand-color, 15%);
         }
@@ -55,17 +48,29 @@ $brand-color: #657DAD;
     height: 480px;
     margin: 80px auto 0;
     text-align: center;
-
     .caption {
-      margin: 0 0 1em 0;
+      margin: 0 0 1em;
       font-weight: normal;
       color: $brand-color;
     }
 
-    .generate {
+    .code {
+      color: lighten($brand-color, 15%);
+      text-align: center;
+    }
+
+    .randao-box {
       width: 640px;
-      height: 280px;
-      border: 1px solid $brand-color;
+      height: 240px;
+      border: 2px dashed $brand-color;
+      border-radius: 20px;
+      margin: 2em auto;
+      .randao-progress-wrapper {
+        width: 80px;
+        height: 80px;
+        margin: 112px auto;
+        color: $brand-color;
+      }
     }
   }
 }
@@ -73,4 +78,22 @@ $brand-color: #657DAD;
 .intro {
   width: 100%;
   height: 100%;
+}
+
+.tap {
+  border: 2px solid $brand-color;
+  border-radius: 50%;
+  height: 2em;
+  margin: -2.5em 0 0 -2.5em;
+  position: absolute;
+  width: 2em;
+  z-index: 999;
+  -webkit-animation: tap 800ms;
+  animation: tap 800ms;
+  -webkit-transform: scale(.2);
+  transform: scale(.2);
+}
+
+@keyframes tap {
+  100% { transform: scale(1); }
 }
