@@ -11,6 +11,11 @@ body {
     text-decoration: none;
     transition: color 0.3s ease-in-out;
   }
+
+  svg * {
+    fill: none;
+    stroke: currentColor;
+  }
 }
 
 .landing {
@@ -44,9 +49,11 @@ body {
   }
 
   .content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     width: 640px;
-    height: 480px;
-    margin: 80px auto 0;
     text-align: center;
     .caption {
       margin: 0 0 1em;
@@ -60,15 +67,16 @@ body {
     }
 
     .randao-box {
+      display: flex;
+      justify-content: center;
+      align-items: center;
       width: 640px;
       height: 240px;
       border: 2px dashed $brand-color;
       border-radius: 20px;
       margin: 2em auto;
       .randao-progress-wrapper {
-        width: 80px;
-        height: 80px;
-        margin: 112px auto;
+        width: 74px;
         color: $brand-color;
       }
     }
