@@ -17,6 +17,8 @@ contract Randao {
     uint256   random;
     bool      settled;
     uint96    bountypot;
+    // For debug
+    uint32    commitNum;
 
     Consumer[] consumers;
     address[] paddresses;
@@ -24,7 +26,7 @@ contract Randao {
   }
 
   uint32 public numCampaigns;
-  mapping (uint => Campaign) public campaigns;
+  mapping (uint32 => Campaign) public campaigns;
 
   uint96 public callbackFee      = 100 finney;
   uint8  public constant version = 1;
@@ -41,6 +43,8 @@ contract Randao {
       if(_hs != "" && c.participants[msg.sender].commitment == ""){
         c.paddresses[c.paddresses.length++] = msg.sender;
         c.participants[msg.sender] = Participant(0, _hs);
+        // For debug
+        c.commitNum = c.commitNum + 1;
       } else { // can't change commitment after commited
         refund(msg.value);
       }
@@ -79,8 +83,8 @@ contract Randao {
   }
 
   function newCampaign(uint32 _bnum, uint96 _deposit, uint8 _commitDeadline, uint8 _commitBalkline) returns (uint32 _campaignID) {
-    _campaignID = numCampaigns++;
     Campaign c = campaigns[_campaignID];
+    numCampaigns++;
     c.bnum = _bnum;
     c.deposit = _deposit;
     c.commitDeadline = _commitDeadline;
@@ -98,7 +102,7 @@ contract Randao {
   }
 
   function getRandom(uint32 _campaignID) returns (uint256) {
-    Campaign c = campaigns[0];
+    Campaign c = campaigns[_campaignID];
 
     if(block.number >= c.bnum) { // use campaign's random number
       if(!c.settled) { settle(c); }
