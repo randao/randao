@@ -83,6 +83,11 @@ contract Randao {
   }
 
   function newCampaign(uint32 _bnum, uint96 _deposit, uint8 _commitDeadline, uint8 _commitBalkline) returns (uint32 _campaignID) {
+    if(block.number >= _bnum){ throw; }
+    if(_commitDeadline <= 0){ throw; }
+    if(_commitBalkline <= 0){ throw; }
+    if(_commitDeadline >= _commitBalkline){ throw; }
+
     Campaign c = campaigns[_campaignID];
     numCampaigns++;
     c.bnum = _bnum;
