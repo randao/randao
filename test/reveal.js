@@ -8,7 +8,7 @@ contract('Randao#reveal', function(accounts) {
   it("reveal other account secret and replace other's participant address");
 
   // TODO: fix key
-  it.skip("with correct reveals count", function(done) {
+  it("with correct reveals count", function(done) {
     var [randao, secrets, height, promise] = utils.prepare4reveals(accounts);
     var deposit = web3.toWei('2', 'ether');
     var key = web3.sha3(height, deposit, 6, 12);

@@ -17,7 +17,6 @@ contract Randao {
     uint256   random;
     bool      settled;
     uint96    bountypot;
-    // For debug
     uint32    commitNum;
 
     Consumer[] consumers;
@@ -43,7 +42,6 @@ contract Randao {
       if(_hs != "" && c.participants[msg.sender].commitment == ""){
         c.paddresses[c.paddresses.length++] = msg.sender;
         c.participants[msg.sender] = Participant(0, _hs);
-        // For debug
         c.commitNum = c.commitNum + 1;
       } else { // can't change commitment after commited
         refund(msg.value);

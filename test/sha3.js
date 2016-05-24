@@ -1,7 +1,6 @@
 contract('Randao', function(accounts) {
 
-  // TODO
-  it.skip("web3.sha3 should return same as Solidity's sha3", function(done) {
+  it("web3.sha3 should return same as Solidity's sha3", function(done) {
     var zerostr = new Array(64).fill('0').join('');
     var str = web3.toHex('abc').substr(2);
     var longstr = (zerostr + str).substr(-64, 64);

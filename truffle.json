@@ -11,10 +11,7 @@
       // Paths relative to "app" directory that should be
       // concatenated and processed during build.
       "stylesheets/app.css"
-    ],
-    // Note: You can also include directories.
-    // This will copy a static images directory to the build directory.
-    "images/": "images/"
+    ]
   },
   "deploy": [
     // Names of contracts that should be deployed to the network.
@@ -25,6 +22,6 @@
   "rpc": {
     // Default RPC configuration.
     "host": "127.0.0.1",
-    "port": 8545
+    "port": 4500
   }
 }

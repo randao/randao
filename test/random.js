@@ -4,7 +4,7 @@ var utils = require('./helper/utils');
 contract('Randao#random', function(accounts) {
 
   // TODO fix key
-  it.only("generate random number if all revealed", function(done) {
+  it("generate random number if all revealed", function(done) {
     var deposit = web3.toWei('2', 'ether');
     var target_block = web3.eth.blockNumber + 12;
     var randao = Randao.at(Randao.deployed_address);
@@ -12,7 +12,7 @@ contract('Randao#random', function(accounts) {
     randao.newCampaign.call(target_block, deposit, 6, 12)
     .then((campaignID) => {
       console.log('campaignID:', campaignID);
-      var [randao, secrets, height, promise] = utils.prepare4reveals(accounts, campaignID, target_block);
+      var [randao, secrets, height, promise] = utils.prepare4reveals(randao, accounts, campaignID, target_block);
       promise.then(() => {
         Timecop.ff(3).then(() => {
           Promise.all(secrets.map((secret, i) => { return randao.reveal(campaignID, secret, {from: accounts[i]}); }))
@@ -33,7 +33,7 @@ contract('Randao#random', function(accounts) {
     })
   });
 
-  it.skip("will not generate random number if anyone not reveal secret", function(done) {
+  it("will not generate random number if anyone not reveal secret", function(done) {
     var [randao, secrets, height, promise] = utils.prepare4reveals(accounts);
     var deposit = web3.toWei('2', 'ether');
     var key = web3.sha3(height, deposit, 6, 12);

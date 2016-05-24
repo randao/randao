@@ -17,21 +17,5 @@ contract('Randao', function(accounts) {
     })
   })
 
-  it("should create in correct time window", function(done){
-    var randao = Randao.at(Randao.deployed_address);
-    var bnum = web3.eth.blockNumber;
-    var deposit = web3.toWei('2', 'ether');
-
-    randao.newCampaign(bnum, deposit, 6, 12, {from: accounts[0], value: web3.toWei(10, "wei")}).
-    then(function(data){},function(data){ done(); })
-  })
-
-  it("check params validation", function(done){
-    var randao = Randao.at(Randao.deployed_address);
-    var bnum = web3.eth.blockNumber;
-    var deposit = web3.toWei('2', 'ether');
-
-    randao.newCampaign(bnum, deposit, 6, 6, { from: accounts[0], value: web3.toWei(10, "wei") }).
-    then(function(data){}, function(data){ done(); })
-  })
+  it("check params validation");
 })

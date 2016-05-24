@@ -1,5 +1,5 @@
 var Timecop = {
-  ff: function(blocks = 0){
+  ff: function(blocks){
     var height = web3.eth.blockNumber;
     if(typeof blocks !== 'number' || blocks === 0){
       return Promise.resolve(height);

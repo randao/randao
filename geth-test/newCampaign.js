@@ -7,8 +7,8 @@ var val_cont = web3.toWei(10, "wei")    //to be sure we have enough for val + ga
 
 console.log('blockNumber: ', web3.eth.blockNumber);
 console.log('target_block: ', target_block);
-console.log('newCampaign plz wait....')
-randao.newCampaign.sendTransaction(target_block, deposit, 6, 12, {from:eth.accounts[1],gas:100000,value:val_cont});
+console.log('newCampaign plz wait....');
+randao.newCampaign.sendTransaction(target_block, deposit, 6, 12, {from:eth.accounts[1],gas:100000,value:val_cont})
 
 miner.start(1); admin.sleepBlocks(1); miner.stop();
 
