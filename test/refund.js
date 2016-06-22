@@ -1,5 +1,4 @@
 var Timecop = require('./helper/Timecop');
-var utils = require('./helper/utils');
 
 contract('Randao#refund', function(accounts) {
 

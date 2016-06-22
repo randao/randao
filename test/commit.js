@@ -1,47 +1,67 @@
 var Timecop = require('./helper/Timecop');
-var utils = require('./helper/utils');
 
 contract('Randao#commit', function(accounts) {
-
-  it.only("add commitment", function(done){
+  it("add commitment", function(done){
     var randao = Randao.at(Randao.deployed_address);
     var bnum = web3.eth.blockNumber + 12;
     var deposit = web3.toWei('2', 'ether');
 
-    randao.newCampaign(bnum, deposit, 6, 12, {from: accounts[0], value: web3.toWei(10, "wei")}).
-    then((tx) => {
+    console.log('target blockNumber: ', bnum);
+    console.log('newCampaign at blockNumber: ', web3.eth.blockNumber);
+    randao.newCampaign(bnum, deposit, 6, 12, {from: accounts[0],gas:100000,value:web3.toWei(10, "wei")})
+      .then((tx) => {
       randao.numCampaigns.call().then(function(campaignID){
-        assert.equal(campaignID.toNumber(), 1);
+        console.log('campaignID: ', campaignID.toNumber());
 
-        var zerostr = Array.apply(null, Array(3)).map(String.prototype.valueOf, "0").join('');
-        var s = '5';
-        var secret = '0x' + (zerostr + web3.toHex(s).substr(2)).substr(-64, 64);
-
-        var commitment = web3.sha3(secret, true);
+        var secret = web3.toHex('abcabc').slice(2);
+        console.log('secret:', secret);
+        var height = web3.eth.blockNumber + 10;
+        var deposit = web3.toWei('2', 'ether');
+        var commitment = '0x' + web3.sha3(secret, { encoding: 'hex' });
         console.log('commitment: ', commitment);
-
-        Timecop.ff(4).then(() => {
-          randao.commit.sendTransaction(campaignID - 1, commitment, {value: deposit, from: web3.eth.accounts[2]}).
-          then((tx) => {
-            console.log('commit plz wait...');
-            console.log('commit at blockNumber: ', web3.eth.blockNumber);
-
-            // TODO: should return the correct commitment
-            randao.getCommitment.call(campaignID - 1, {from: web3.eth.accounts[2]}).
-            then((r) => {
-              console.log('get commitment', r);
-              done();
-            })
-          });
+        randao.commit(campaignID - 1, commitment, {value: web3.toWei('10', 'ether'), from: accounts[1]}).
+        then(() => {
+          randao.getCommitment.call(campaignID - 1, {from: accounts[1]}).
+          then((commit) => {
+            console.log('commit in contract: ', commit);
+            assert.equal(commit, commitment);
+            done();
+          })
         })
       })
-    })
+    });
   })
 
-  it("should commit in time window");
+  it("should commit in time window", function(done){
+    var randao = Randao.at(Randao.deployed_address);
+    var bnum = web3.eth.blockNumber + 12;
+    var deposit = web3.toWei('2', 'ether');
 
-  it("don't allow commit twice from one account");
+    console.log('target blockNumber: ', bnum);
+    console.log('newCampaign at blockNumber: ', web3.eth.blockNumber);
+    randao.newCampaign(bnum, deposit, 6, 12, {from: accounts[0],gas:100000,value:web3.toWei(10, "wei")})
+      .then((tx) => {
+      randao.numCampaigns.call().then(function(campaignID){
+        console.log('campaignID: ', campaignID.toNumber());
 
-  it("randao contract holds commitment ethers");
-
+        var secret = web3.toHex('abcabc').slice(2);
+        console.log('secret:', secret);
+        var height = web3.eth.blockNumber + 10;
+        var deposit = web3.toWei('2', 'ether');
+        var commitment = '0x' + web3.sha3(secret, { encoding: 'hex' });
+        Timecop.ff(6).then(() => {
+          console.log('commitment: ', commitment);
+          randao.commit(campaignID - 1, commitment, {value: web3.toWei('10', 'ether'), from: accounts[1]}).
+          then(() => {
+            randao.getCommitment.call(campaignID - 1, {from: accounts[1]}).
+            then((commit) => {
+              console.log('commit in contract: ', web3.toAscii(commit));
+              assert.equal(commit, "0x0000000000000000000000000000000000000000000000000000000000000000");
+              done();
+            })
+          })
+        })
+      })
+    });
+  });
 });

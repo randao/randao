@@ -31,6 +31,7 @@ contract Randao {
   uint8  public constant version = 1;
 
   event CampaignAdded(uint campaignID, uint32 bnum, uint96 deposit, uint8 commitDeadline, uint8 commitBalkline);
+  event Commit(uint CampaignId, address from, bytes32 commitment);
 
   function Randao() {}
 
@@ -43,7 +44,8 @@ contract Randao {
         c.paddresses[c.paddresses.length++] = msg.sender;
         c.participants[msg.sender] = Participant(0, _hs);
         c.commitNum = c.commitNum + 1;
-      } else { // can't change commitment after commited
+        Commit(_campaignID, msg.sender, _hs);
+      } else {
         refund(msg.value);
       }
     } else {
@@ -162,8 +164,8 @@ contract Randao {
     }
   }
 
+  // TODO: refactoring
   function refund(uint rvalue) private {
-    // TODO: msg.sender or tx.origin ?
     if(rvalue > txfee()){
       msg.sender.send(rvalue - txfee());
     }
