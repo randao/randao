@@ -127,7 +127,7 @@ contract Randao {
 
   function calculate(Campaign storage _c) private {
     for (uint i = 0; i < _c.paddresses.length; i++) {
-      _c.random ^= _c.participants[_c.paddresses[i]].secret;
+      _c.random ^= _c.participants[_c.paddresses[i]].secret + uint256(block.blockhash(block.number));
     }
   }
 
