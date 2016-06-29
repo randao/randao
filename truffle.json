@@ -22,6 +22,6 @@
   "rpc": {
     // Default RPC configuration.
     "host": "127.0.0.1",
-    "port": 8545
+    "port": 4500
   }
 }
