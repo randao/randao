@@ -8,7 +8,7 @@ contract('Randao', function(accounts) {
 
     console.log('target blockNumber: ', bnum);
     console.log('newCampaign at blockNumber: ', web3.eth.blockNumber);
-    randao.newCampaign(bnum, deposit, 6, 12, {from: accounts[0],gas:100000,value:web3.toWei(10, "wei")})
+    randao.newCampaign(bnum, deposit, 6, 12, {from: accounts[0],gas:150000,value:web3.toWei(10, "ether")})
       .then((tx) => {
       randao.numCampaigns.call().then(function(campaignID){
         assert.equal(campaignID.toNumber(), 1);
@@ -66,7 +66,7 @@ contract('Randao', function(accounts) {
     var height = web3.eth.blockNumber + 10;
     var bnum = web3.eth.blockNumber + 19;
     var deposit = web3.toWei('2', 'ether');
-    randao.newCampaign(height, deposit, 6, 12).then(() => {
+    randao.newCampaign(height, deposit, 6, 12, {from: accounts[0],gas:150000,value:web3.toWei(10, "ether")}).then(() => {
       var bal = web3.eth.getBalance(accounts[0]);
 
       randao.commit(1, web3.sha3(secret), {value: web3.toWei('12.3', 'ether')}).then(() => {
@@ -84,7 +84,7 @@ contract('Randao', function(accounts) {
     var bnum = web3.eth.blockNumber + 19;
     var deposit = web3.toWei('20', 'ether');
 
-    randao.newCampaign(height, deposit, 6, 12).then(() => {
+    randao.newCampaign(height, deposit, 6, 12, {from: accounts[0],gas:150000,value:web3.toWei(10, "ether")}).then(() => {
       var bal = web3.eth.getBalance(accounts[0]);
 
       var nbal = web3.eth.getBalance(accounts[0]);
@@ -100,7 +100,7 @@ contract('Randao', function(accounts) {
     var bnum = web3.eth.blockNumber + 19;
     var deposit = web3.toWei('2', 'ether');
 
-    randao.newCampaign(height, deposit, 6, 12).then(() => {
+    randao.newCampaign(height, deposit, 6, 12, {from: accounts[0],gas:150000,value:web3.toWei(10, "ether")}).then(() => {
       var bal = web3.eth.getBalance(accounts[0]);
 
       randao.commit(1, web3.sha3(secret), {value: web3.toWei('12.3', 'ether')}).then(() => {

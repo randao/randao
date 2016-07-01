@@ -8,7 +8,7 @@ contract('Randao#commit', function(accounts) {
 
     console.log('target blockNumber: ', bnum);
     console.log('newCampaign at blockNumber: ', web3.eth.blockNumber);
-    randao.newCampaign(bnum, deposit, 6, 12, {from: accounts[0],gas:100000,value:web3.toWei(10, "wei")})
+    randao.newCampaign(bnum, deposit, 6, 12, {from: accounts[0],gas:150000,value:web3.toWei(10, "ether")})
       .then((tx) => {
       randao.numCampaigns.call().then(function(campaignID){
         console.log('campaignID: ', campaignID.toNumber());
@@ -39,7 +39,7 @@ contract('Randao#commit', function(accounts) {
 
     console.log('target blockNumber: ', bnum);
     console.log('newCampaign at blockNumber: ', web3.eth.blockNumber);
-    randao.newCampaign(bnum, deposit, 6, 12, {from: accounts[0],gas:100000,value:web3.toWei(10, "wei")})
+    randao.newCampaign(bnum, deposit, 6, 12, {from: accounts[0],gas:150000,value:web3.toWei(10, "ether")})
       .then((tx) => {
       randao.numCampaigns.call().then(function(campaignID){
         console.log('campaignID: ', campaignID.toNumber());

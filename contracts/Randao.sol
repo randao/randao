@@ -4,10 +4,7 @@ contract Randao {
     bytes32   commitment;
     bool      reward;
   }
-  struct Consumer {
-    address caddr;
-    bytes  cbname;
-  }
+
   struct Campaign {
     uint32    bnum;
     uint96    deposit;
@@ -17,10 +14,9 @@ contract Randao {
     uint16    reveals;
     uint256   random;
     bool      settled;
-    uint96    bountypot;
+    uint256   bountypot;
     uint32    commitNum;
 
-    Consumer[] consumers;
     address[] paddresses;
     mapping (address => Participant) participants;
   }
@@ -41,6 +37,7 @@ contract Randao {
     if(_commitDeadline <= 0){ throw; }
     if(_commitBalkline <= 0){ throw; }
     if(_commitDeadline >= _commitBalkline){ throw; }
+    if(msg.value < 1 ether){ throw; }
 
     _campaignID = campaigns.length++;
     Campaign c = campaigns[_campaignID];
@@ -49,6 +46,7 @@ contract Randao {
     c.deposit = _deposit;
     c.commitDeadline = _commitDeadline;
     c.commitBalkline = _commitBalkline;
+    c.bountypot = msg.value;
 
     CampaignAdded(_campaignID, _bnum, _deposit, _commitDeadline, _commitBalkline);
   }
@@ -113,15 +111,6 @@ contract Randao {
       if(!c.settled) { settle(c); }
 
       return c.random;
-    } else { // register random number callback
-      // TODO: msg.sender or tx.origin ?
-      if(msg.value >= callbackFee) {
-        add2callback(c);
-        return c.random;
-      } else {
-        refund(msg.value);
-        return c.random;
-      }
     }
   }
 
@@ -136,8 +125,6 @@ contract Randao {
 
     if(_c.reveals > 0){
       if(_c.reveals == _c.paddresses.length) calculate(_c);
-
-      if(_c.random > 0) callback(_c);
     }
   }
 
@@ -148,7 +135,7 @@ contract Randao {
       if(p.secret != 0 && p.reward == false){
         p.reward = true;
         var share = c.bountypot / c.reveals;
-        if(!msg.sender.send(share - txfee())){ throw; }
+        if(!msg.sender.send(share)){ throw; }
       }
     }
     else {
@@ -156,19 +143,6 @@ contract Randao {
     }
   }
 
-  function add2callback(Campaign storage _c) private {
-    _c.consumers[_c.consumers.length++] = Consumer(msg.sender, slice(msg.data, 148, 4));
-    _c.bountypot += uint96(msg.value - txfee());
-  }
-
-  function callback(Campaign storage _c) private {
-    for (uint i = 0; i < _c.consumers.length; i++) {
-      var consumer = _c.consumers[i];
-      consumer.caddr.call(consumer.cbname, _c.random);
-    }
-  }
-
-  // TODO: refactoring
   function refund(uint rvalue) private {
     if(rvalue > txfee()){
       msg.sender.send(rvalue - txfee());
@@ -177,19 +151,5 @@ contract Randao {
 
   function txfee() private returns (uint96) {
     return uint96(100 * tx.gasprice);
-  }
-
-  function slice(bytes _str, uint _index, uint _size) returns (bytes) {
-    uint rindex;
-    bytes memory newstr;
-    if(_size == 0 || _index + _size >= _str.length){
-      rindex = _str.length;
-    } else {
-      rindex = _index + _size;
-    }
-    for(uint i=_index; i< rindex; i++) {
-      newstr[i-_index] = _str[i];
-    }
-    return newstr;
   }
 }
