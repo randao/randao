@@ -27,7 +27,6 @@ contract Randao {
   uint256 public charityFund;
   address public founder;
 
-  uint96 public callbackFee      = 100 finney;
   uint256 public bounty          = 1 ether;
   uint8  public constant version = 1;
 
