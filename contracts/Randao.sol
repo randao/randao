@@ -72,8 +72,6 @@ contract Randao {
         p.secret = _s;
       }
     }
-
-    refund(rvalue);
   }
 
   function getCommitment(uint32 _campaignID) external returns (bytes32) {
