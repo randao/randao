@@ -43,20 +43,14 @@ contract Randao {
       _
   }
 
-  modifier checkBounty {
-      if (msg.value < bounty) throw;
-      _
-  }
+  // Prevents methods from perfoming any value transfer
+  modifier noEther() { if (msg.value > 0) throw; _}
 
-  modifier onlyFounder {
-      if (founder != msg.sender) throw;
-      _
-  }
+  modifier checkBounty { if (msg.value < bounty) throw; _}
 
-  modifier checkFund {
-      if (charityFund == 0) throw;
-      _
-  }
+  modifier onlyFounder { if (founder != msg.sender) throw; _}
+
+  modifier checkFund { if (charityFund == 0) throw; _}
 
   function Randao() {
       founder = msg.sender;
@@ -85,6 +79,7 @@ contract Randao {
   function commit(uint256 _campaignID, bytes32 _hs) external {
       Campaign c = campaigns[_campaignID];
       if (msg.sender < c.deposit) throw;
+
       if (block.number >= c.bnum - c.commitBalkline
           && block.number < c.bnum - c.commitDeadline){
           if (_hs != "" && c.participants[msg.sender].commitment == ""){
@@ -99,13 +94,13 @@ contract Randao {
       }
   }
 
-  function getCommitment(uint256 _campaignID) external returns (bytes32) {
+  function getCommitment(uint256 _campaignID) noEther external returns (bytes32) {
       Campaign c = campaigns[_campaignID];
       Participant p = c.participants[msg.sender];
       return p.commitment;
   }
 
-  function reveal(uint256 _campaignID, uint256 _s) external {
+  function reveal(uint256 _campaignID, uint256 _s) noEther external {
       Campaign c = campaigns[_campaignID];
       if (block.number < c.bnum
           && block.number >= c.bnum - c.commitDeadline) {
@@ -120,7 +115,7 @@ contract Randao {
       }
   }
 
-  function getRandom(uint256 _campaignID) external returns (uint256) {
+  function getRandom(uint256 _campaignID) noEther external returns (uint256) {
       Campaign c = campaigns[_campaignID];
       if (block.number >= c.bnum && c.reveals > 0) {
           if (!c.settled) { c.settled = true; }
@@ -129,23 +124,21 @@ contract Randao {
       }
   }
 
-  function getMyBounty(uint256 _campaignID) external {
+  function getMyBounty(uint256 _campaignID) noEther external {
       Campaign c = campaigns[_campaignID];
       if (c.settled == true) {
           Participant p = c.participants[msg.sender];
           uint256 share = c.bountypot / c.reveals;
-          if (p.revealed && p.reward != 0) {
+          if (p.revealed && p.reward != 0 && share != 0) {
               p.reward = share;
               if (!msg.sender.send(share)) {
                   p.reward = 0;
               }
           }
-      } else {
-          throw;
       }
   }
 
-  function refundBounty(uint256 _campaignID) external {
+  function refundBounty(uint256 _campaignID) noEther external {
       Campaign c = campaigns[_campaignID];
       if (block.number >= c.bnum
           && c.owner == msg.sender
@@ -159,7 +152,7 @@ contract Randao {
       }
   }
 
-  function withdrawFund() onlyFounder checkFund external {
+  function withdrawFund() onlyFounder checkFund noEther external {
       uint256 fund = charityFund;
       charityFund = 0;
       if (!msg.sender.send(fund)) {
