@@ -1,23 +1,25 @@
+// Sample code
 contract Dice {
   uint256 public random;
+  address public randao;
 
-  function randao(address _addr, uint32 _bnum, uint96 _deposit, uint8 _commitDeadline, uint8 _commitBalkline) returns (bool) {
-    return _addr.call.value(200 finney)(bytes4(sha3("newCampaign(uint32,uint96,uint8,uint8)")), _bnum, _deposit, _commitDeadline, _commitBalkline, bytes4(sha3('callback(uint256)')));
+  function Dice(address _randao) {
+      randao = _randao;
   }
 
-  function callback(uint256 _r) {
-    random = extractArg(msg.data);
+  /*
+    newCampaign(1808247, 20 ether, 20, 10)
+  */
+  function newCampaign(
+      uint32 _targetBlockNum,
+      uint96 _deposit,
+      uint8 _commitBalkline,
+      uint8 _commitDeadline) {
+      randao.call.value(20 ether)(bytes4(sha3("newCampaign(uint32,uint96,uint8,uint8)")), _targetBlockNum, _deposit, _commitBalkline, _commitDeadline);
   }
-
-  // TODO
-  function deposit() {
-  }
-
-  function extractArg(bytes data) returns (uint) {
-    uint rtn = 0;
-    for(uint i = 4; i < data.length; i++) {
-      rtn += uint(data[i]) * (256 ** (data.length - 1 - i));
-    }
-    return rtn;
-  }
+  /*
+    call returns a boolean indicating whether the invoked function terminated (true) or caused an EVM exception (false).
+    It is not possible to access the actual data returned (for this we would need to know the encoding and size in advance).
+    So, pleace check up the campaignID on etherscan.io or Mist.
+  */
 }
