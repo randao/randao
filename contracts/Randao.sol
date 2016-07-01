@@ -24,6 +24,8 @@ contract Randao {
 
   uint256 public numCampaigns;
   Campaign[] public campaigns;
+  uint256 public charityFund;
+  address public founder;
 
   uint96 public callbackFee      = 100 finney;
   uint256 public bounty          = 1 ether;
@@ -34,22 +36,34 @@ contract Randao {
   event Reveal(uint256 CampaignId, address from, uint256 secret);
 
   modifier timeLineCheck(uint32 _bnum, uint8 _commitBalkline, uint8 _commitDeadline) {
-    if (block.number >= _bnum) throw;
-    if (_commitBalkline <= 0) throw;
-    if (_commitDeadline <= 0) throw;
-    if (_commitDeadline >= _commitBalkline) throw;
-    if (block.number >= _bnum - _commitBalkline) throw;
-    _
+      if (block.number >= _bnum) throw;
+      if (_commitBalkline <= 0) throw;
+      if (_commitDeadline <= 0) throw;
+      if (_commitDeadline >= _commitBalkline) throw;
+      if (block.number >= _bnum - _commitBalkline) throw;
+      _
   }
 
-  function Randao() {}
+  modifier onlyFounder {
+      if (founder != msg.sender) throw;
+      _
+  }
+
+  modifier checkFund {
+      if (charityFund == 0) throw;
+      _
+  }
+
+  function Randao() {
+      founder = msg.sender;
+  }
 
   function newCampaign(
       uint32 _bnum,
       uint96 _deposit,
       uint8 _commitBalkline,
       uint8 _commitDeadline
-  ) timeLineCheck(_bnum, _commitBalkline, _commitDeadline) returns (uint256 _campaignID) {
+  ) timeLineCheck(_bnum, _commitBalkline, _commitDeadline) external returns (uint256 _campaignID) {
       _campaignID = campaigns.length++;
       Campaign c = campaigns[_campaignID];
       numCampaigns++;
@@ -101,10 +115,11 @@ contract Randao {
       return p.commitment;
   }
 
-  function getRandom(uint256 _campaignID) returns (uint256) {
+  function getRandom(uint256 _campaignID) external returns (uint256) {
       Campaign c = campaigns[_campaignID];
       if (block.number >= c.bnum && c.reveals > 0) {
           if (!c.settled) { c.settled = true; }
+          charityFund = (c.commitNum - c.reveals) * c.deposit;
           return c.random;
       }
   }
@@ -132,5 +147,11 @@ contract Randao {
           c.bountypot = 0;
           if (!msg.sender.send(c.bountypot)) throw;
       }
+  }
+
+  function withdrawFund() onlyFounder external {
+      uint256 fund = charityFund;
+      charityFund = 0;
+      if (!msg.sender.send(fund)) throw;
   }
 }
