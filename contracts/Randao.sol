@@ -2,6 +2,7 @@ contract Randao {
   struct Participant {
     uint256   secret;
     bytes32   commitment;
+    bool      reward;
   }
   struct Consumer {
     address caddr;
@@ -52,14 +53,14 @@ contract Randao {
     CampaignAdded(_campaignID, _bnum, _deposit, _commitDeadline, _commitBalkline);
   }
 
-  function commit(uint32 _campaignID, bytes32 _hs) external {
+  function commit(uint256 _campaignID, bytes32 _hs) external {
     Campaign c = campaigns[_campaignID];
 
     if(block.number >= c.bnum - c.commitBalkline && block.number < c.bnum - c.commitDeadline){
 
       if(_hs != "" && c.participants[msg.sender].commitment == ""){
         c.paddresses[c.paddresses.length++] = msg.sender;
-        c.participants[msg.sender] = Participant(0, _hs);
+        c.participants[msg.sender] = Participant(0, _hs, false);
         c.commitNum = c.commitNum + 1;
         Commit(_campaignID, msg.sender, _hs);
       } else {
@@ -70,7 +71,7 @@ contract Randao {
     }
   }
 
-  function reveal(uint32 _campaignID, uint256 _s) external {
+  function reveal(uint256 _campaignID, uint256 _s) external {
     Campaign c = campaigns[_campaignID];
 
     uint256 rvalue;
@@ -91,13 +92,13 @@ contract Randao {
     }
   }
 
-  function getCommitment(uint32 _campaignID) external returns (bytes32) {
+  function getCommitment(uint256 _campaignID) external returns (bytes32) {
     Campaign c = campaigns[_campaignID];
     Participant p = c.participants[msg.sender];
     return p.commitment;
   }
 
-  function checkSettled(uint32 _campaignID) returns (bool settled) {
+  function checkSettled(uint256 _campaignID) returns (bool settled) {
     Campaign c = campaigns[_campaignID];
     if(block.number >= c.bnum) {
       if(!c.settled) { settle(c); }
@@ -105,7 +106,7 @@ contract Randao {
     return c.settled;
   }
 
-  function getRandom(uint32 _campaignID) returns (uint256) {
+  function getRandom(uint256 _campaignID) returns (uint256) {
     Campaign c = campaigns[_campaignID];
 
     if(block.number >= c.bnum) { // use campaign's random number
@@ -137,17 +138,21 @@ contract Randao {
       if(_c.reveals == _c.paddresses.length) calculate(_c);
 
       if(_c.random > 0) callback(_c);
-
-      refundBounty(_c);
     }
   }
 
-  function refundBounty(Campaign storage _c) private {
-    var fee = 100 * tx.gasprice;
-    var share = _c.bountypot / _c.reveals;
-
-    for (uint i = 0; i < _c.paddresses.length; i++) {
-      _c.paddresses[i].send(share - txfee());
+  function getMyBounty(uint256 _campaignID) external {
+    Campaign c = campaigns[_campaignID];
+    if(c.settled == true) {
+      Participant p = c.participants[msg.sender];
+      if(p.secret != 0 && p.reward == false){
+        p.reward = true;
+        var share = c.bountypot / c.reveals;
+        if(!msg.sender.send(share - txfee())){ throw; }
+      }
+    }
+    else {
+      throw;
     }
   }
 
