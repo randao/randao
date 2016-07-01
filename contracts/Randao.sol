@@ -27,8 +27,9 @@ contract Randao {
   uint96 public callbackFee      = 100 finney;
   uint8  public constant version = 1;
 
-  event CampaignAdded(uint campaignID, uint32 bnum, uint96 deposit, uint8 commitDeadline, uint8 commitBalkline);
-  event Commit(uint CampaignId, address from, bytes32 commitment);
+  event CampaignAdded(uint256 campaignID, uint32 bnum, uint96 deposit, uint8 commitDeadline, uint8 commitBalkline);
+  event Commit(uint256 CampaignId, address from, bytes32 commitment);
+  event Reveal(uint256 CampaignId, address from, uint256 secret);
 
   function Randao() {}
 
@@ -62,22 +63,15 @@ contract Randao {
         c.commitNum = c.commitNum + 1;
         Commit(_campaignID, msg.sender, _hs);
       } else {
-        refund(msg.value);
+        throw;
       }
     } else {
-      refund(msg.value);
+      throw;
     }
   }
 
   function reveal(uint256 _campaignID, uint256 _s) external {
     Campaign c = campaigns[_campaignID];
-
-    uint256 rvalue;
-    if(msg.value < c.deposit) {
-      rvalue = msg.value;
-    } else {
-      rvalue = msg.value - c.deposit;
-    }
 
     if(block.number < c.bnum && block.number >= c.bnum - c.commitDeadline){
 
@@ -141,15 +135,5 @@ contract Randao {
     else {
       throw;
     }
-  }
-
-  function refund(uint rvalue) private {
-    if(rvalue > txfee()){
-      msg.sender.send(rvalue - txfee());
-    }
-  }
-
-  function txfee() private returns (uint96) {
-    return uint96(100 * tx.gasprice);
   }
 }
