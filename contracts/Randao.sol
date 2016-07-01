@@ -17,7 +17,6 @@ contract Randao {
     uint256   bountypot;
     uint32    commitNum;
 
-    address[] paddresses;
     mapping (address => Participant) participants;
   }
 
@@ -58,7 +57,6 @@ contract Randao {
     if(block.number >= c.bnum - c.commitBalkline && block.number < c.bnum - c.commitDeadline){
 
       if(_hs != "" && c.participants[msg.sender].commitment == ""){
-        c.paddresses[c.paddresses.length++] = msg.sender;
         c.participants[msg.sender] = Participant(0, _hs, false);
         c.commitNum = c.commitNum + 1;
         Commit(_campaignID, msg.sender, _hs);
@@ -80,6 +78,8 @@ contract Randao {
       if(sha3(_s) == p.commitment){
         if(p.secret != _s){ c.reveals++; }
         p.secret = _s;
+        c.random ^= p.secret;
+        Reveal(_campaignID, msg.sender, _s);
       }
     }
   }
@@ -90,35 +90,13 @@ contract Randao {
     return p.commitment;
   }
 
-  function checkSettled(uint256 _campaignID) returns (bool settled) {
-    Campaign c = campaigns[_campaignID];
-    if(block.number >= c.bnum) {
-      if(!c.settled) { settle(c); }
-    }
-    return c.settled;
-  }
-
   function getRandom(uint256 _campaignID) returns (uint256) {
     Campaign c = campaigns[_campaignID];
 
-    if(block.number >= c.bnum) { // use campaign's random number
-      if(!c.settled) { settle(c); }
+    if(block.number >= c.bnum && c.reveals > 0) {
+      if(!c.settled) { c.settled = true; }
 
       return c.random;
-    }
-  }
-
-  function calculate(Campaign storage _c) private {
-    for (uint i = 0; i < _c.paddresses.length; i++) {
-      _c.random ^= _c.participants[_c.paddresses[i]].secret;
-    }
-  }
-
-  function settle(Campaign storage _c) private {
-    _c.settled = true;
-
-    if(_c.reveals > 0){
-      if(_c.reveals == _c.paddresses.length) calculate(_c);
     }
   }
 
