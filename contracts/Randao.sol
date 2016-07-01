@@ -3,13 +3,14 @@ contract Randao {
       uint256   secret;
       bytes32   commitment;
       uint256   reward;
+      bool      revealed;
   }
 
   struct Campaign {
       uint32    bnum;
       uint96    deposit;
-      uint8     commitDeadline;
       uint8     commitBalkline;
+      uint8     commitDeadline;
 
       uint16    reveals;
       uint256   random;
@@ -25,41 +26,50 @@ contract Randao {
   Campaign[] public campaigns;
 
   uint96 public callbackFee      = 100 finney;
+  uint256 public bounty          = 1 ether;
   uint8  public constant version = 1;
 
-  event CampaignAdded(uint256 campaignID, uint32 bnum, uint96 deposit, uint8 commitDeadline, uint8 commitBalkline);
+  event CampaignAdded(uint256 campaignID, uint32 bnum, uint96 deposit, uint8 commitBalkline, uint8 commitDeadline);
   event Commit(uint256 CampaignId, address from, bytes32 commitment);
   event Reveal(uint256 CampaignId, address from, uint256 secret);
 
+  modifier timeLineCheck(uint32 _bnum, uint8 _commitBalkline, uint8 _commitDeadline) {
+    if (block.number >= _bnum) throw;
+    if (_commitBalkline <= 0) throw;
+    if (_commitDeadline <= 0) throw;
+    if (_commitDeadline >= _commitBalkline) throw;
+    if (block.number >= _bnum - _commitBalkline) throw;
+    _
+  }
+
   function Randao() {}
 
-  function newCampaign(uint32 _bnum, uint96 _deposit, uint8 _commitDeadline, uint8 _commitBalkline) returns (uint256 _campaignID) {
-      if (block.number >= _bnum){ throw; }
-      if (_commitDeadline <= 0){ throw; }
-      if (_commitBalkline <= 0){ throw; }
-      if (_commitDeadline >= _commitBalkline){ throw; }
-      if (msg.value < 1 ether){ throw; }
-
+  function newCampaign(
+      uint32 _bnum,
+      uint96 _deposit,
+      uint8 _commitBalkline,
+      uint8 _commitDeadline
+  ) timeLineCheck(_bnum, _commitBalkline, _commitDeadline) returns (uint256 _campaignID) {
       _campaignID = campaigns.length++;
       Campaign c = campaigns[_campaignID];
       numCampaigns++;
       c.bnum = _bnum;
       c.owner = msg.sender;
       c.deposit = _deposit;
-      c.commitDeadline = _commitDeadline;
       c.commitBalkline = _commitBalkline;
+      c.commitDeadline = _commitDeadline;
       c.bountypot = msg.value;
 
-      CampaignAdded(_campaignID, _bnum, _deposit, _commitDeadline, _commitBalkline);
+      CampaignAdded(_campaignID, _bnum, _deposit, _commitBalkline, _commitDeadline);
   }
 
   function commit(uint256 _campaignID, bytes32 _hs) external {
       Campaign c = campaigns[_campaignID];
-      if (msg.sender <= c.deposit){ throw; }
-
-      if (block.number >= c.bnum - c.commitBalkline && block.number < c.bnum - c.commitDeadline){
+      if (msg.sender < c.deposit) throw;
+      if (block.number >= c.bnum - c.commitBalkline
+          && block.number < c.bnum - c.commitDeadline){
           if (_hs != "" && c.participants[msg.sender].commitment == ""){
-              c.participants[msg.sender] = Participant(0, _hs, 0);
+              c.participants[msg.sender] = Participant(0, _hs, 0, false);
               c.commitNum = c.commitNum + 1;
               Commit(_campaignID, msg.sender, _hs);
           } else {
@@ -72,14 +82,13 @@ contract Randao {
 
   function reveal(uint256 _campaignID, uint256 _s) external {
       Campaign c = campaigns[_campaignID];
-
-      if (block.number < c.bnum && block.number >= c.bnum - c.commitDeadline) {
-
+      if (block.number < c.bnum
+          && block.number >= c.bnum - c.commitDeadline) {
           Participant p = c.participants[msg.sender];
-
-          if (sha3(_s) == p.commitment) {
-              if (p.secret != _s){ c.reveals++; }
+          if (sha3(_s) == p.commitment && !p.revealed) {
+              c.reveals++;
               p.secret = _s;
+              p.revealed = true;
               c.random ^= p.secret;
               Reveal(_campaignID, msg.sender, _s);
         }
@@ -94,7 +103,6 @@ contract Randao {
 
   function getRandom(uint256 _campaignID) returns (uint256) {
       Campaign c = campaigns[_campaignID];
-
       if (block.number >= c.bnum && c.reveals > 0) {
           if (!c.settled) { c.settled = true; }
           return c.random;
@@ -105,11 +113,11 @@ contract Randao {
       Campaign c = campaigns[_campaignID];
       if (c.settled == true) {
           Participant p = c.participants[msg.sender];
-          if (p.secret != 0 && p.reward != 0){
-              uint256 share = c.bountypot / c.reveals;
+          uint256 share = c.bountypot / c.reveals;
+          if (p.secret != 0 && p.reward != 0) {
               p.reward = share;
-              if (!msg.sender.send(share)){ throw; }
-         }
+              if (!msg.sender.send(share)) throw;
+          }
       } else {
           throw;
       }
@@ -122,9 +130,7 @@ contract Randao {
           && c.reveals == 0
           && c.bountypot > 0) {
           c.bountypot = 0;
-          if (!msg.sender.send(c.bountypot)){
-              throw;
-          }
+          if (!msg.sender.send(c.bountypot)) throw;
       }
   }
 }
