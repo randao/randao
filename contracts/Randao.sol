@@ -148,7 +148,7 @@ contract Randao {
       }
   }
 
-  function withdrawFund() onlyFounder external {
+  function withdrawFund() onlyFounder checkFund external {
       uint256 fund = charityFund;
       charityFund = 0;
       if (!msg.sender.send(fund)) throw;
