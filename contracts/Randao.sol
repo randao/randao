@@ -24,8 +24,8 @@ contract Randao {
     mapping (address => Participant) participants;
   }
 
-  uint32 public numCampaigns;
-  mapping (uint32 => Campaign) public campaigns;
+  uint256 public numCampaigns;
+  Campaign[] public campaigns;
 
   uint96 public callbackFee      = 100 finney;
   uint8  public constant version = 1;
@@ -34,6 +34,23 @@ contract Randao {
   event Commit(uint CampaignId, address from, bytes32 commitment);
 
   function Randao() {}
+
+  function newCampaign(uint32 _bnum, uint96 _deposit, uint8 _commitDeadline, uint8 _commitBalkline) returns (uint256 _campaignID) {
+    if(block.number >= _bnum){ throw; }
+    if(_commitDeadline <= 0){ throw; }
+    if(_commitBalkline <= 0){ throw; }
+    if(_commitDeadline >= _commitBalkline){ throw; }
+
+    _campaignID = campaigns.length++;
+    Campaign c = campaigns[_campaignID];
+    numCampaigns++;
+    c.bnum = _bnum;
+    c.deposit = _deposit;
+    c.commitDeadline = _commitDeadline;
+    c.commitBalkline = _commitBalkline;
+
+    CampaignAdded(_campaignID, _bnum, _deposit, _commitDeadline, _commitBalkline);
+  }
 
   function commit(uint32 _campaignID, bytes32 _hs) external {
     Campaign c = campaigns[_campaignID];
@@ -78,22 +95,6 @@ contract Randao {
     Campaign c = campaigns[_campaignID];
     Participant p = c.participants[msg.sender];
     return p.commitment;
-  }
-
-  function newCampaign(uint32 _bnum, uint96 _deposit, uint8 _commitDeadline, uint8 _commitBalkline) returns (uint32 _campaignID) {
-    if(block.number >= _bnum){ throw; }
-    if(_commitDeadline <= 0){ throw; }
-    if(_commitBalkline <= 0){ throw; }
-    if(_commitDeadline >= _commitBalkline){ throw; }
-
-    Campaign c = campaigns[_campaignID];
-    numCampaigns++;
-    c.bnum = _bnum;
-    c.deposit = _deposit;
-    c.commitDeadline = _commitDeadline;
-    c.commitBalkline = _commitBalkline;
-
-    CampaignAdded(_campaignID, _bnum, _deposit, _commitDeadline, _commitBalkline);
   }
 
   function checkSettled(uint32 _campaignID) returns (bool settled) {
