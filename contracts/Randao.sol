@@ -43,6 +43,11 @@ contract Randao {
       _
   }
 
+  modifier checkBounty {
+      if (msg.value < bounty) throw;
+      _
+  }
+
   modifier onlyFounder {
       if (founder != msg.sender) throw;
       _
@@ -62,7 +67,8 @@ contract Randao {
       uint96 _deposit,
       uint8 _commitBalkline,
       uint8 _commitDeadline
-  ) timeLineCheck(_bnum, _commitBalkline, _commitDeadline) external returns (uint256 _campaignID) {
+  ) timeLineCheck(_bnum, _commitBalkline, _commitDeadline)
+    checkBounty external returns (uint256 _campaignID) {
       _campaignID = campaigns.length++;
       Campaign c = campaigns[_campaignID];
       numCampaigns++;
@@ -93,6 +99,12 @@ contract Randao {
       }
   }
 
+  function getCommitment(uint256 _campaignID) external returns (bytes32) {
+      Campaign c = campaigns[_campaignID];
+      Participant p = c.participants[msg.sender];
+      return p.commitment;
+  }
+
   function reveal(uint256 _campaignID, uint256 _s) external {
       Campaign c = campaigns[_campaignID];
       if (block.number < c.bnum
@@ -106,12 +118,6 @@ contract Randao {
               Reveal(_campaignID, msg.sender, _s);
         }
       }
-  }
-
-  function getCommitment(uint256 _campaignID) external returns (bytes32) {
-      Campaign c = campaigns[_campaignID];
-      Participant p = c.participants[msg.sender];
-      return p.commitment;
   }
 
   function getRandom(uint256 _campaignID) external returns (uint256) {
@@ -128,9 +134,11 @@ contract Randao {
       if (c.settled == true) {
           Participant p = c.participants[msg.sender];
           uint256 share = c.bountypot / c.reveals;
-          if (p.secret != 0 && p.reward != 0) {
+          if (p.revealed && p.reward != 0) {
               p.reward = share;
-              if (!msg.sender.send(share)) throw;
+              if (!msg.sender.send(share)) {
+                  p.reward = 0;
+              }
           }
       } else {
           throw;
@@ -143,14 +151,19 @@ contract Randao {
           && c.owner == msg.sender
           && c.reveals == 0
           && c.bountypot > 0) {
+          uint256 bountypot = c.bountypot;
           c.bountypot = 0;
-          if (!msg.sender.send(c.bountypot)) throw;
+          if (!msg.sender.send(bountypot)) {
+              c.bountypot = bountypot;
+          }
       }
   }
 
   function withdrawFund() onlyFounder checkFund external {
       uint256 fund = charityFund;
       charityFund = 0;
-      if (!msg.sender.send(fund)) throw;
+      if (!msg.sender.send(fund)) {
+          charityFund = fund;
+      }
   }
 }
