@@ -119,7 +119,7 @@ contract Randao {
       Campaign c = campaigns[_campaignID];
       if (block.number >= c.bnum && c.reveals > 0) {
           if (!c.settled) { c.settled = true; }
-          charityFund = (c.commitNum - c.reveals) * c.deposit;
+          charityFund += (c.commitNum - c.reveals) * c.deposit;
           return c.random;
       }
   }
