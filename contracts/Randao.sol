@@ -4,6 +4,7 @@ contract Randao {
       bytes32   commitment;
       uint256   reward;
       bool      revealed;
+      bool      rewarded;
   }
 
   struct Campaign {
@@ -83,7 +84,7 @@ contract Randao {
       if (block.number >= c.bnum - c.commitBalkline
           && block.number < c.bnum - c.commitDeadline){
           if (_hs != "" && c.participants[msg.sender].commitment == ""){
-              c.participants[msg.sender] = Participant(0, _hs, 0, false);
+              c.participants[msg.sender] = Participant(0, _hs, 0, false, false);
               c.commitNum = c.commitNum + 1;
               Commit(_campaignID, msg.sender, _hs);
           } else {
@@ -128,11 +129,13 @@ contract Randao {
       Campaign c = campaigns[_campaignID];
       if (c.settled == true) {
           Participant p = c.participants[msg.sender];
-          uint256 share = c.bountypot / c.reveals;
-          if (p.revealed && p.reward != 0 && share != 0) {
+          if (p.revealed && !p.rewarded) {
+              uint256 share = c.bountypot / c.reveals;
               p.reward = share;
-              if (!msg.sender.send(share)) {
+              p.revealed = true;
+              if (!msg.sender.send(share + c.deposit)) {
                   p.reward = 0;
+                  p.rewarded = false;
               }
           }
       }
