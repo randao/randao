@@ -25,7 +25,6 @@ contract Randao {
 
   uint256 public numCampaigns;
   Campaign[] public campaigns;
-  uint256 public charityFund;
   address public founder;
 
   uint256 public bounty          = 1 ether;
@@ -85,7 +84,7 @@ contract Randao {
           && block.number < c.bnum - c.commitDeadline){
           if (_hs != "" && c.participants[msg.sender].commitment == ""){
               c.participants[msg.sender] = Participant(0, _hs, 0, false, false);
-              c.commitNum = c.commitNum + 1;
+              c.commitNum++;
               Commit(_campaignID, msg.sender, _hs);
           } else {
               throw;
@@ -118,9 +117,8 @@ contract Randao {
 
   function getRandom(uint256 _campaignID) noEther external returns (uint256) {
       Campaign c = campaigns[_campaignID];
-      if (block.number >= c.bnum && c.reveals > 0) {
+      if (block.number >= c.bnum && c.reveals == c.commitNum) {
           if (!c.settled) { c.settled = true; }
-          charityFund += (c.commitNum - c.reveals) * c.deposit;
           return c.random;
       }
   }
@@ -145,21 +143,13 @@ contract Randao {
       Campaign c = campaigns[_campaignID];
       if (block.number >= c.bnum
           && c.owner == msg.sender
-          && c.reveals == 0
+          && c.reveals < c.commitNum
           && c.bountypot > 0) {
           uint256 bountypot = c.bountypot;
           c.bountypot = 0;
           if (!msg.sender.send(bountypot)) {
               c.bountypot = bountypot;
           }
-      }
-  }
-
-  function withdrawFund() onlyFounder checkFund noEther external {
-      uint256 fund = charityFund;
-      charityFund = 0;
-      if (!msg.sender.send(fund)) {
-          charityFund = fund;
       }
   }
 }
