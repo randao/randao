@@ -79,7 +79,7 @@ contract Randao {
 
   function commit(uint256 _campaignID, bytes32 _hs) external {
       Campaign c = campaigns[_campaignID];
-      if (msg.sender < c.deposit) throw;
+      if (msg.value < c.deposit) throw;
 
       if (block.number >= c.bnum - c.commitBalkline
           && block.number < c.bnum - c.commitDeadline){
@@ -132,7 +132,7 @@ contract Randao {
           if (p.revealed && !p.rewarded) {
               uint256 share = c.bountypot / c.reveals;
               p.reward = share;
-              p.revealed = true;
+              p.rewarded = true;
               if (!msg.sender.send(share + c.deposit)) {
                   p.reward = 0;
                   p.rewarded = false;
