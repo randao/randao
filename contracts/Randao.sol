@@ -50,8 +50,6 @@ contract Randao {
 
   modifier onlyFounder { if (founder != msg.sender) throw; _}
 
-  modifier checkFund { if (charityFund == 0) throw; _}
-
   function Randao() {
       founder = msg.sender;
   }
