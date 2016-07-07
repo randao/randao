@@ -18,7 +18,7 @@ contract Randao {
       uint8     commitBalkline;
       uint8     commitDeadline;
 
-      uint16    reveals;
+      uint16    revealsNum;
       uint256   random;
       bool      settled;
       uint256   bountypot;
@@ -54,6 +54,8 @@ contract Randao {
 
   modifier checkBounty { if (msg.value < bounty) throw; _}
 
+  modifier moreThanZero(uint256 _deposit) { if (_deposit <= 0) throw; _}
+
   function Randao() {
       founder = msg.sender;
   }
@@ -64,7 +66,7 @@ contract Randao {
       uint8 _commitBalkline,
       uint8 _commitDeadline
   ) timeLineCheck(_bnum, _commitBalkline, _commitDeadline)
-    checkBounty external returns (uint256 _campaignID) {
+    checkBounty moreThanZero(_deposit) external returns (uint256 _campaignID) {
       _campaignID = campaigns.length++;
       Campaign c = campaigns[_campaignID];
       numCampaigns++;
@@ -117,7 +119,7 @@ contract Randao {
           && block.number >= c.bnum - c.commitDeadline) {
           Participant p = c.participants[msg.sender];
           if (sha3(_s) == p.commitment && !p.revealed) {
-              c.reveals++;
+              c.revealsNum++;
               p.secret = _s;
               p.revealed = true;
               c.random ^= p.secret;
@@ -128,9 +130,11 @@ contract Randao {
 
   function getRandom(uint256 _campaignID) noEther external returns (uint256) {
       Campaign c = campaigns[_campaignID];
-      if (block.number >= c.bnum && c.reveals == c.commitNum) {
+      if (block.number >= c.bnum) {
           if (!c.settled) { c.settled = true; }
-          return c.random;
+          if (c.revealsNum == c.commitNum) {
+              return c.random;
+          }
       }
   }
 
@@ -139,7 +143,12 @@ contract Randao {
       if (c.settled == true) {
           Participant p = c.participants[msg.sender];
           if (p.revealed && !p.rewarded) {
-              uint256 share = c.bountypot / c.reveals;
+              uint256 share;
+              if (c.commitNum > c.revealsNum) {
+                  share = c.bountypot / c.revealsNum;
+              } else {
+                  share = (c.bountypot + fines(c)) / c.revealsNum;
+              }
               p.reward = share;
               p.rewarded = true;
               if (!msg.sender.send(share + c.deposit)) {
@@ -150,11 +159,15 @@ contract Randao {
       }
   }
 
+  function fines(Campaign _c) internal returns (uint256) {
+      return (_c.commitNum - _c.revealsNum) * _c.deposit;
+  }
+
   function refundBounty(uint256 _campaignID) noEther external {
       Campaign c = campaigns[_campaignID];
-      if (block.number >= c.bnum
+      if (c.settled
           && c.consumers[msg.sender].caddr != msg.sender
-          && c.reveals < c.commitNum
+          && c.revealsNum < c.commitNum
           && c.consumers[msg.sender].bountypot > 0) {
           uint256 bountypot = c.consumers[msg.sender].bountypot;
           c.consumers[msg.sender].bountypot = 0;
