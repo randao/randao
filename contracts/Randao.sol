@@ -7,6 +7,11 @@ contract Randao {
       bool      rewarded;
   }
 
+  struct Consumer {
+    address caddr;
+    uint256 bountypot;
+  }
+
   struct Campaign {
       uint32    bnum;
       uint96    deposit;
@@ -18,8 +23,8 @@ contract Randao {
       bool      settled;
       uint256   bountypot;
       uint32    commitNum;
-      address   owner;
 
+      mapping (address => Consumer) consumers;
       mapping (address => Participant) participants;
   }
 
@@ -30,9 +35,10 @@ contract Randao {
   uint256 public bounty          = 1 ether;
   uint8  public constant version = 1;
 
-  event CampaignAdded(uint256 campaignID, uint32 bnum, uint96 deposit, uint8 commitBalkline, uint8 commitDeadline);
+  event CampaignAdded(uint256 campaignID, uint32 bnum, uint96 deposit, uint8 commitBalkline, uint8 commitDeadline, uint256 bountypot);
   event Commit(uint256 CampaignId, address from, bytes32 commitment);
   event Reveal(uint256 CampaignId, address from, uint256 secret);
+  event Follow(uint256 CampaignId, address from, uint256 bountypot);
 
   modifier timeLineCheck(uint32 _bnum, uint8 _commitBalkline, uint8 _commitDeadline) {
       if (block.number >= _bnum) throw;
@@ -47,8 +53,6 @@ contract Randao {
   modifier noEther() { if (msg.value > 0) throw; _}
 
   modifier checkBounty { if (msg.value < bounty) throw; _}
-
-  modifier onlyFounder { if (founder != msg.sender) throw; _}
 
   function Randao() {
       founder = msg.sender;
@@ -65,13 +69,22 @@ contract Randao {
       Campaign c = campaigns[_campaignID];
       numCampaigns++;
       c.bnum = _bnum;
-      c.owner = msg.sender;
       c.deposit = _deposit;
       c.commitBalkline = _commitBalkline;
       c.commitDeadline = _commitDeadline;
       c.bountypot = msg.value;
+      c.consumers[msg.sender] = Consumer(msg.sender, msg.value);
+      CampaignAdded(_campaignID, _bnum, _deposit, _commitBalkline, _commitDeadline, msg.value);
+  }
 
-      CampaignAdded(_campaignID, _bnum, _deposit, _commitBalkline, _commitDeadline);
+  function follow(uint256 _campaignID) checkBounty external returns (bool) {
+      Campaign c = campaigns[_campaignID];
+      Consumer consumer = c.consumers[msg.sender];
+      if (consumer.caddr != 0) throw;
+      c.bountypot += msg.value;
+      c.consumers[msg.sender] = Consumer(msg.sender, msg.value);
+      Follow(_campaignID, msg.sender, msg.value);
+      return true;
   }
 
   function commit(uint256 _campaignID, bytes32 _hs) external {
@@ -140,13 +153,13 @@ contract Randao {
   function refundBounty(uint256 _campaignID) noEther external {
       Campaign c = campaigns[_campaignID];
       if (block.number >= c.bnum
-          && c.owner == msg.sender
+          && c.consumers[msg.sender].caddr != msg.sender
           && c.reveals < c.commitNum
-          && c.bountypot > 0) {
-          uint256 bountypot = c.bountypot;
-          c.bountypot = 0;
+          && c.consumers[msg.sender].bountypot > 0) {
+          uint256 bountypot = c.consumers[msg.sender].bountypot;
+          c.consumers[msg.sender].bountypot = 0;
           if (!msg.sender.send(bountypot)) {
-              c.bountypot = bountypot;
+              c.consumers[msg.sender].bountypot = bountypot;
           }
       }
   }
