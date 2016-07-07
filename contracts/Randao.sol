@@ -81,12 +81,14 @@ contract Randao {
 
   function follow(uint256 _campaignID) checkBounty external returns (bool) {
       Campaign c = campaigns[_campaignID];
-      Consumer consumer = c.consumers[msg.sender];
-      if (consumer.caddr != 0) throw;
-      c.bountypot += msg.value;
-      c.consumers[msg.sender] = Consumer(msg.sender, msg.value);
-      Follow(_campaignID, msg.sender, msg.value);
-      return true;
+      if (block.number < c.bnum - c.commitDeadline) {
+          Consumer consumer = c.consumers[msg.sender];
+          if (consumer.caddr != 0) throw;
+          c.bountypot += msg.value;
+          c.consumers[msg.sender] = Consumer(msg.sender, msg.value);
+          Follow(_campaignID, msg.sender, msg.value);
+          return true;
+      }
   }
 
   function commit(uint256 _campaignID, bytes32 _hs) external {
