@@ -144,20 +144,30 @@ contract Randao {
       Campaign c = campaigns[_campaignID];
       if (c.settled == true) {
           Participant p = c.participants[msg.sender];
-          if (p.revealed && !p.rewarded) {
-              uint256 share;
-              if (c.commitNum > c.revealsNum) {
-                  share = fines(c) / c.revealsNum;
+          if (!p.rewarded) {
+              if (p.revealed) {
+                  uint256 share;
+                  if (c.commitNum > c.revealsNum) {
+                      share = fines(c) / c.revealsNum;
+                  } else {
+                      share = c.bountypot / c.revealsNum;
+                  }
+                  transferBounty(c, p, share);
               } else {
-                  share = c.bountypot / c.revealsNum;
-              }
-              p.reward = share;
-              p.rewarded = true;
-              if (!msg.sender.send(share + c.deposit)) {
-                  p.reward = 0;
-                  p.rewarded = false;
+                  if (c.revealsNum == 0) {
+                      transferBounty(c, p, 0);
+                  }
               }
           }
+      }
+  }
+
+  function transferBounty(Campaign _c, Participant _p, uint256 _share) internal {
+      _p.reward = _share;
+      _p.rewarded = true;
+      if (!msg.sender.send(_share + _c.deposit)) {
+          _p.reward = 0;
+          _p.rewarded = false;
       }
   }
 
