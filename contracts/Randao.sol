@@ -1,3 +1,5 @@
+import "TheDivine.sol";
+
 contract Randao {
   struct Participant {
       uint256   secret;
@@ -22,6 +24,9 @@ contract Randao {
 
       mapping (address => Participant) participants;
   }
+
+  address theDivineAddress;
+  TheDivine theDivine;
 
   uint256 public numCampaigns;
   Campaign[] public campaigns;
@@ -57,6 +62,11 @@ contract Randao {
       founder = msg.sender;
   }
 
+  function setTheDivineAddress(address divineAddress) onlyFounder{
+      theDivineAddress = divineAddress;
+      theDivine = TheDivine(divineAddress);
+  }
+
   function newCampaign(
       uint32 _bnum,
       uint96 _deposit,
@@ -86,6 +96,7 @@ contract Randao {
           if (_hs != "" && c.participants[msg.sender].commitment == ""){
               c.participants[msg.sender] = Participant(0, _hs, 0, false, false);
               c.commitNum = c.commitNum + 1;
+              c.random = theDivine.GetPower();
               Commit(_campaignID, msg.sender, _hs);
           } else {
               throw;
