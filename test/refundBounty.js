@@ -28,30 +28,32 @@ contract('Randao', function(accounts) {
               then((commit) => {
                 assert.equal(commit, commitment);
                 Timecop.ff(5).then(() => {
-                  console.log('reveal at blockNumber: ', web3.eth.blockNumber);
-                  randao.reveal(campaignID - 1, secret, {from: accounts[1]}).
-                  then(() => {
-                    Timecop.ff(5).then(() => {
-                    randao.getRandom.call(campaignID - 1, {from: accounts[1]}).
-                      then((random) => {
-                        console.log('random: ', random.toNumber());
+                  Timecop.ff(5).then(() => {
+                  randao.getRandom.call(campaignID - 1, {from: accounts[1]}).
+                    then((random) => {
+                      console.log('random: ', random.toNumber());
 
-                        randao.getRandom(campaignID - 1, {from: accounts[1]}).
-                        then((tx) => {
-                          balance = web3.eth.getBalance(accounts[1]);
-                          console.log(balance.plus(21).toString(10));
-                          randao.getMyBounty(campaignID -1, { from: accounts[1] }).
+                      randao.getRandom(campaignID - 1, {from: accounts[1]}).
+                      then((tx) => {
+                        balance = web3.eth.getBalance(accounts[1]);
+                        console.log(balance.plus(21).toString(10));
+
+                        console.log('getMyBounty');
+                        randao.getMyBounty(campaignID -1, { from: accounts[1] }).
+                        then(() => {
+                          newBalance = web3.eth.getBalance(accounts[1]);
+
+                          console.log(newBalance.plus(21).toString(10));
+                          console.log('refundBounty');
+                          randao.refundBounty(campaignID - 1, { from: accounts[0] }).
                           then(() => {
-                            newBalance = web3.eth.getBalance(accounts[1]);
-
-                            console.log(newBalance.plus(21).toString(10));
                             done();
-                          }) // getMyBounty
-                        })
+                          }) // refundBounty
+                        }) // getMyBounty
+                      })
 
-                      }) // gerRandom
-                    })
-                  }) // reveal
+                    }) // gerRandom
+                  })
                 })
               })
             }) // commit

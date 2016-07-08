@@ -16,8 +16,7 @@
   "deploy": [
     // Names of contracts that should be deployed to the network.
     "Randao",
-    "Counter",
-    "Dice"
+    "Counter"
   ],
   "rpc": {
     // Default RPC configuration.
