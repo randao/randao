@@ -244,13 +244,14 @@ contract Randao {
       return (c.commitNum - c.revealsNum) * c.deposit;
   }
 
+  // If the campaign fails, the consumers can get back the bounty.
   function refundBounty(uint256 _campaignID) noEther external {
       Campaign c = campaigns[_campaignID];
       returnBounty(_campaignID, c);
   }
 
   modifier campaignFailed(uint32 _commitNum, uint32 _revealsNum) {
-      if (_commitNum > _revealsNum) throw;
+      if (_commitNum == _revealsNum && _commitNum != 0) throw;
       _
   }
 
@@ -259,7 +260,6 @@ contract Randao {
       _
   }
 
-  // If the campaign fails, the consumers can get back the bounty.
   function returnBounty(uint256 _campaignID, Campaign storage c)
     beTrue(c.settled)
     campaignFailed(c.commitNum, c.revealsNum)
