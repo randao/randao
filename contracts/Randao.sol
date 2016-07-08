@@ -50,8 +50,6 @@ contract Randao {
 
   modifier beFalse(bool _t) { if (_t) throw; _}
 
-  modifier beTrue(bool _t) { if (!_t) throw; _}
-
   function Randao() {
       founder = msg.sender;
   }
@@ -180,13 +178,17 @@ contract Randao {
       Reveal(_campaignID, msg.sender, _s);
   }
 
+  modifier bountyPhase(uint256 _bnum){ if (block.number < _bnum) throw; _}
+
   function getRandom(uint256 _campaignID) noEther external returns (uint256) {
       Campaign c = campaigns[_campaignID];
-      if (block.number >= c.bnum) {
-          if (!c.settled) { c.settled = true; }
-          if (c.revealsNum == c.commitNum) {
-              return c.random;
-          }
+      return returnRandom(c);
+  }
+
+  function returnRandom(Campaign storage c) bountyPhase(c.bnum) internal returns (uint256) {
+      if (c.revealsNum == c.commitNum) {
+          c.settled = true;
+          return c.random;
       }
   }
 
@@ -204,7 +206,7 @@ contract Randao {
   function transferBounty(
       Campaign storage c,
       Participant storage p
-    ) beTrue(c.settled)
+    ) bountyPhase(c.bnum)
       beFalse(p.rewarded) internal {
       if (c.revealsNum > 0) {
           if (p.revealed) {
@@ -261,7 +263,7 @@ contract Randao {
   }
 
   function returnBounty(uint256 _campaignID, Campaign storage c)
-    beTrue(c.settled)
+    bountyPhase(c.bnum)
     campaignFailed(c.commitNum, c.revealsNum)
     beConsumer(c.consumers[msg.sender].caddr) internal {
       uint256 bountypot = c.consumers[msg.sender].bountypot;
