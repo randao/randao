@@ -1,5 +1,6 @@
 // version 1.0
 import "TheDivine.sol";
+
 contract Randao {
   struct Participant {
       uint256   secret;
@@ -69,9 +70,11 @@ contract Randao {
       _
   }
 
-  function setTheDivineAddress(address divineAddress) onlyFounder{
-      theDivineAddress = divineAddress;
-      theDivine = TheDivine(divineAddress);
+  function setTheDivineAddress(address divineAddress) {
+      if(founder == msg.sender){
+        theDivineAddress = divineAddress;
+        theDivine = TheDivine(divineAddress);
+      }
   }
 
   function newCampaign(
