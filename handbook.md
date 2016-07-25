@@ -30,7 +30,7 @@ This function has four parameters:
 * `_commitBalkline`: The distance between block number of begining to commit and `_bnum`
 * `_commitDeadline`: The distance between block number of ending to commit and `_bnum`
 
-比如当前块高度是1840602，我们需要在1840900这个块时需要一个随机数，希望每个参与者提交押金为20 ether，在目标块前200个块开始提交（即从1840700块起，包含1840700），在目标块前100个块结束提交（即1840800块截止，包含1840800块），在1840800之后（不包含1840800）1840900块之前（不包含1840900）属于Reveal阶段。可以使用如下方式来调用：
+比如当前块高度是1840602，而我们在1840900这个块时需要一个随机数，希望每个参与者提交押金为20 ether，在目标块前200个块开始提交（即从1840700块起，包含1840700），在目标块前100个块结束提交（即1840800块截止，包含1840800块）。在1840800之后（不包含1840800）1840900块之前（不包含1840900）属于Reveal阶段。可以使用如下方式来调用：
 
 For instance, the current block number is 1840602, we need a random number at 1840900, and we wish the deposit to be 20 ethers, begin to commit at the block before 200 blocks of target block(i.e. start at 1840700, include 1840700), finish to commit at the block before 100 blocks of target block(i.e. end at 1840800, include 1840800).It's the reveal phase between 1840800(not include 1840800) and 1840900(not include 1840900).We can call the function as below:
 
