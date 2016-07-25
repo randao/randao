@@ -21,7 +21,6 @@ This function has four parameters:
 
 For instance, the current block number is 1840602, we need a random number at 1840900, and we wish the deposit to be 20 ethers, begin to commit at the block before 200 blocks of target block(i.e. start at 1840700, include 1840700), finish to commit at the block before 100 blocks of target block(i.e. end at 1840800, include 1840800).It's the reveal phase between 1840800(not include 1840800) and 1840900(not include 1840900).We can call the function as below:
 
-`newCampaign(1840700, 20000000000000000000, 200, 100)`，并且需要发送至少 1 ether 作为参与者奖励费用。
 `newCampaign(1840700, 20000000000000000000, 200, 100)`，and we need to send 1 ether as the bounty.
 
 ### Follow Campaign
@@ -56,7 +55,6 @@ Commiting the random number must send deposit, can not more or less than the dep
 function reveal(uint256 _campaignID, uint256 _s)
 ```
 
-`reveal`函数有两个参数：
 `reveal` function has two parameters:
 
 * `_campaignID`
