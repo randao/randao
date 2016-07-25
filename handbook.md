@@ -42,7 +42,7 @@ For instance, the current block number is 1840602, we need a random number at 18
 
 随机数需求方可以选择不创建一轮活动，而是选择跟随某一轮随机数活动作为自己的随机数，这时可以使用 Follow 函数。
 
-The RANDAO demonder can follow a campaign instead of create a new campaign by calling `Follow` function.
+The RANDAO demonder can follow a campaign by calling `Follow` function instead of creating a new campaign.
 
 ```javascript
 function follow(uint256 _campaignID)
@@ -76,9 +76,9 @@ The `commit` function has two parameters:
 * `_campaignID`
 * `_hs`: The sha3 of random number.
 
-提交随机数需要发送押金到合约，不能多于或者少于活动押金，必须刚好等于。提交随机数，必须在提交随机数窗口期提交，否则无效。以前面例子为例，提交随机数窗口期为：1840700到1840800。
+提交随机数需要发送押金到合约，不能多于或者少于活动押金，必须刚好等于。提交随机数，必须在提交随机数窗口期提交，否则会失败。以前面例子为例，提交随机数窗口期为：1840700到1840800。
 
-Commiting the random number must send deposit, can not more or less than the deposit must be exactly equal to the deposit.Commiting must be in the collecting phase, otherwise it will be invalid.In previous example, the collecting phase is between 1840700 and 1840800.
+Commiting the random number must send deposit, can not more or less than the deposit must be exactly equal to the deposit.Commiting must be in the collecting phase, otherwise it will fail.In previous example, the collecting phase is between 1840700 and 1840800.
 
 ### 披露随机数
 ### Reveal seed
@@ -95,7 +95,7 @@ function reveal(uint256 _campaignID, uint256 _s)
 
 在随机数提交阶段结束之后，进入Reveal阶段，随机数提交者可以披露自己的随机数，合约会验证是否是有效的随机数，如果有效，将计算到最终的随机数结果中。以前面例子为例，随机数披露窗口期为：1840800到1840900。
 
-After the collecting phase, then it's reveal phase, every commiter then can reveal his seed, the contract will verify the seed.If the seed is valid, it will be used to generate final random number.In previous example, the reveal phase is between 1840800 and 1840900.
+After the collecting phase, then it's reveal phase, every commiter then can reveal his seed, and the contract will verify the seed.If the seed is valid, it will be used to generate final random number.In previous example, the reveal phase is between 1840800 and 1840900.
 
 ### 获取随机数
 ### Fetch random number
