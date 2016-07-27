@@ -1,0 +1,5 @@
+# 1.0 (2016.7.27)
+* Initial public release.
+
+* TEST-NET: 0x0a25BCAC5b5A90e3F2dd7Fdf907A6c071b1296Ce
+* Production net: 0x6C8060507273A0ff175361C6bf9F86e97f8Cf2C8
