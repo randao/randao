@@ -238,7 +238,7 @@ contract Randao {
   ) internal {
       p.reward = _share;
       p.rewarded = true;
-      if (!msg.sender.call.value(_share + c.deposit)()) {
+      if (!msg.sender.send(_share + c.deposit)) {
           p.reward = 0;
           p.rewarded = false;
       }
@@ -270,7 +270,7 @@ contract Randao {
     beConsumer(c.consumers[msg.sender].caddr) internal {
       uint256 bountypot = c.consumers[msg.sender].bountypot;
       c.consumers[msg.sender].bountypot = 0;
-      if (!msg.sender.call.value(bountypot)()) {
+      if (!msg.sender.send(bountypot)) {
           c.consumers[msg.sender].bountypot = bountypot;
       }
   }
