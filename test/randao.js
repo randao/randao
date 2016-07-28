@@ -2,7 +2,7 @@ var Timecop = require('./helper/timecop');
 
 contract('Randao', function(accounts) {
   it("randao campaign lifecycle", function(done){
-    var randao = Randao.at(Randao.deployed_address);
+    var randao = Randao.deployed();
     var bnum = web3.eth.blockNumber + 20;
     var deposit = web3.toWei('10', 'ether');
 

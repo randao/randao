@@ -1,7 +1,8 @@
 #requirements
-truffle ~> 0.3.1
+truffle ~> 2.0.0
 pyethereum
 
 #development
+npm install solidity-sha3
 `truffle test`
 check contracts in directory `contracts/`

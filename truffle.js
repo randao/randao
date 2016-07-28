@@ -1,4 +1,4 @@
-{
+module.exports = {
   "build": {
     // Copy ./app/index.html (right hand side) to ./build/index.html.
     "index.html": "index.html",
@@ -16,7 +16,8 @@
   "deploy": [
     // Names of contracts that should be deployed to the network.
     "Randao",
-    "Counter"
+    "Counter",
+    "Sha3"
   ],
   "rpc": {
     // Default RPC configuration.

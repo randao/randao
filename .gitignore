@@ -11,3 +11,5 @@ geth-test/data/
 !geth-test/data/keystore/*.*
 
 out.log.geth
+
+node_modules/
