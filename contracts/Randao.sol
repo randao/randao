@@ -33,14 +33,10 @@ contract Randao {
   Campaign[] public campaigns;
   address public founder;
 
-  uint256 public bounty          = 1 ether;
-
   // Prevents methods from perfoming any value transfer
   modifier noEther() { if (msg.value > 0) throw; _}
 
   modifier blankAddress(address _n) { if (_n != 0) throw; _}
-
-  modifier checkBounty { if (msg.value < bounty) throw; _}
 
   modifier moreThanZero(uint256 _deposit) { if (_deposit <= 0) throw; _}
 
@@ -77,7 +73,7 @@ contract Randao {
       uint16 _commitBalkline,
       uint16 _commitDeadline
   ) timeLineCheck(_bnum, _commitBalkline, _commitDeadline)
-    checkBounty moreThanZero(_deposit) external returns (uint256 _campaignID) {
+    moreThanZero(_deposit) external returns (uint256 _campaignID) {
       _campaignID = campaigns.length++;
       Campaign c = campaigns[_campaignID];
       numCampaigns++;
@@ -93,7 +89,7 @@ contract Randao {
   event Follow(uint256 indexed CampaignId, address indexed from, uint256 bountypot);
 
   function follow(uint256 _campaignID)
-    checkBounty external returns (bool) {
+    external returns (bool) {
       Campaign c = campaigns[_campaignID];
       Consumer consumer = c.consumers[msg.sender];
       return followCampaign(_campaignID, c, consumer);

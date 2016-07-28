@@ -21,7 +21,7 @@ This function has four parameters:
 
 For instance, the current block number is 1840602, we need a random number at 1840900, and we wish the deposit to be 20 ethers, begin to commit at the block before 200 blocks of target block(i.e. start at 1840700, include 1840700), finish to commit at the block before 100 blocks of target block(i.e. end at 1840800, include 1840800).It's the reveal phase between 1840800(not include 1840800) and 1840900(not include 1840900).We can call the function as below:
 
-`newCampaign(1840700, 20000000000000000000, 200, 100)`，and we need to send 1 ether as the bounty.
+`newCampaign(1840700, 20000000000000000000, 200, 100)`，and we can send some ethers as the bounty.
 
 ### Follow Campaign
 
@@ -33,7 +33,7 @@ function follow(uint256 _campaignID)
 
 The `Follow` function has one parameter`_campaignID`.Anyone can find the detail infomation of the specified campaign.
 
-The follow action must at the collecting phase or before it, otherwise it will fail.In previous example, the follow action must before the 1840800 block(include 1840800).The follower need to send 1 ether for the bounty as well.
+The follow action must at the collecting phase or before it, otherwise it will fail.In previous example, the follow action must before the 1840800 block(include 1840800).The follower can also send some ethers for the bounty as well.
 
 ### Collecting valid sha3(s)
 
