@@ -161,7 +161,7 @@ contract Randao {
   }
 
   modifier checkSecret(uint256 _s, bytes32 _commitment) {
-      if (sha3(_s) == _commitment) throw;
+      if (sha3(_s) != _commitment) throw;
       _
   }
 

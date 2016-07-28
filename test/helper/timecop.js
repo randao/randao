@@ -6,7 +6,7 @@ var Timecop = {
     }
 
     console.log(height + '>>' + blocks);
-    var counter = Counter.at(Counter.deployed_address);
+    var counter = Counter.deployed();
     return counter.count({from: web3.eth.accounts[1]}).
       then(()=>{
         if(blocks > 1){
