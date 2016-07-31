@@ -1,5 +1,6 @@
 var Timecop = require('./helper/timecop');
-var soliditySha3 = require('solidity-sha3');
+var abi = require('ethereumjs-abi');
+var BN = require('bn.js')
 
 contract('Randao', function(accounts) {
   it("randao campaign lifecycle", function() {
@@ -19,11 +20,11 @@ contract('Randao', function(accounts) {
 
       return randao.follow(campaignID -1, { from: accounts[1], value: web3.toWei(10, "ether") });
     }).then(function(followed){
-      secret = web3.toBigNumber('334567899898989898989898298492849284928429482948294829482');
+      secret = new BN('334567899898989898989898298492849284928429482948294829482', 10);
       console.log('secret:', secret.toString(10));
       var height = web3.eth.blockNumber + 10;
-      commitment = soliditySha3.default(secret);
-      console.log('commitment: ', commitment.toString(10));
+      commitment = '0x' + abi.soliditySHA3(["uint"], [secret]).toString('hex');
+      console.log('commitment', commitment);
 
       return Timecop.ff(9);
     }).then(() => {
@@ -45,7 +46,7 @@ contract('Randao', function(accounts) {
       return randao.getRandom.call(campaignID - 1, {from: accounts[1]});
     }).then((random) => {
       console.log('random: ', random.toNumber());
-      return randao.getRandom(campaignID - 1, {from: accounts[1]});
+      return randao.getRandom(campaignID - 1, { from: accounts[1] });
     }).then((tx) => {
       return randao.getMyBounty(campaignID -1, { from: accounts[1] });
     }).then(() => {
