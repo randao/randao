@@ -140,7 +140,7 @@ contract Randao {
   }
 
   // For test
-  function getCommitment(uint256 _campaignID) noEther external returns (bytes32) {
+  function getCommitment(uint256 _campaignID) noEther external constant returns (bytes32) {
       Campaign c = campaigns[_campaignID];
       Participant p = c.participants[msg.sender];
       return p.commitment;
