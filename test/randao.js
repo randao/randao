@@ -1,6 +1,4 @@
 var Timecop = require('./helper/timecop');
-var abi = require('ethereumjs-abi');
-var BN = require('bn.js')
 
 contract('Randao', function(accounts) {
   it("randao campaign lifecycle", function() {
@@ -20,12 +18,12 @@ contract('Randao', function(accounts) {
 
       return randao.follow(campaignID -1, { from: accounts[1], value: web3.toWei(10, "ether") });
     }).then(function(followed){
-      secret = new BN('334567899898989898989898298492849284928429482948294829482', 10);
+      secret = web3.toBigNumber('131242344353464564564574574567456');
       console.log('secret:', secret.toString(10));
-      var height = web3.eth.blockNumber + 10;
-      commitment = '0x' + abi.soliditySHA3(["uint"], [secret]).toString('hex');
+      return randao.shaCommit.call(secret.toString(10), {from: accounts[1]});
+    }).then((shaCommit) => {
+      commitment = shaCommit;
       console.log('commitment', commitment);
-
       return Timecop.ff(9);
     }).then(() => {
       console.log('commit', commitment);

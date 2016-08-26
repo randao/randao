@@ -4,5 +4,4 @@ module.exports = function(deployer) {
   deployer.deploy(MetaCoin);
   deployer.deploy(Randao);
   deployer.deploy(Counter);
-  deployer.deploy(Sha3);
 };

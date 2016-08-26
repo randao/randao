@@ -146,6 +146,10 @@ contract Randao {
       return p.commitment;
   }
 
+  function shaCommit(uint256 _s) returns (bytes32) {
+      return sha3(_s);
+  }
+
   event LogReveal(uint256 indexed CampaignId, address indexed from, uint256 secret);
 
   function reveal(uint256 _campaignID, uint256 _s) noEther external {
