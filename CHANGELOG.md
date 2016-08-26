@@ -1,3 +1,9 @@
+Next
+
+* Added shaCommit function (2016.8.26)
+
+------
+
 # 1.01 (2016.7.27)
 * Fixed checkSecret modifier
 * Remove min bounty
