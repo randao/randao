@@ -1,0 +1,34 @@
+{
+  "name": "randao",
+  "version": "1.0.2",
+  "description": "A DAO working as RNG of Ethereum",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "sleep": "^4.0.0",
+    "web3": "^0.17.0-beta"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "truffle test",
+    "testrpc": "testrpc -p 4500",
+    "deploy": "truffle migrate"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/randao/randao.git"
+  },
+  "keywords": [
+    "randao",
+    "ethereum",
+    "solidity",
+    "random"
+  ],
+  "author": "",
+  "license": "GPL-2.0",
+  "bugs": {
+    "url": "https://github.com/randao/randao/issues"
+  },
+  "homepage": "https://github.com/randao/randao#README.md"
+}
