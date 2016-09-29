@@ -23,5 +23,14 @@ module.exports = {
     // Default RPC configuration.
     "host": "127.0.0.1",
     "port": 4500
+  }, 
+  "networks": {
+    "morden": {
+      network_id: 2,
+      port: 8545
+    },
+    "development": {
+      network_id: "default"
+    }
   }
 }
