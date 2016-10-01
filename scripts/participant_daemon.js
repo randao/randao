@@ -1,159 +1,19 @@
 /**
  * Randao participant daemon. Runs continuously monitoring a given Randao.
- * Partipates in Randao by submitting commits and reveals then withdrawing
- * any bounties at the end of a round.
+ * Participates in Randao by submitting commits and reveals when they are
+ * required. Finally it will withdrawing any bounties at the end of a round.
  */
 
-'use script'
+'use strict'
 
-const crypto = require('crypto');
+const utils = require('./utils')
+const RandaoStage = utils.RandaoStage
 
-const RandaoStage = {
-    WAITING_COMMIT: 1,
-    COMMIT: 2,
-    REVEAL: 3,
-    FINISHED: 4,
-}
+const path = require('path')
+const FILENAME = path.basename(__filename)
+
+// TODO: move to config
 const CHECK_INTERVAL = 5000
-
-let commitment, secret
-let committed = revealed = false
-
-/**
- * Check the current state of randao. If it is inside a commit or reveal round
- * and we havn't yet submitted a value then go ahead and submit. Otherwise do
- * nothing.
- *
- * @param web3 Connected instance of web3.js
- * @param randao Pudding abstraction for Randao.sol contract (truffle generated)
- * @param participantAddress Ethereum account address for the participant
- */
-
-function doCheck(web3, randao, participantAddress) {
-    const curBlk = web3.eth.blockNumber
-    let cId, curCampaign
-    randao.numCampaigns.call().then((numCampaigns) => {
-        cId = numCampaigns - 1
-        if (cId < 0) {
-            console.warn(`No campaigns yet ...`)
-            return
-        }
-        randao.campaigns.call(cId).then((campaign) => {
-            const state = randaoState(campaign, curBlk)
-            console.log(`state = ${state}`)
-            switch (state) {
-                case RandaoStage.COMMIT:
-                    if (committed == false) {
-                        console.log(`COMMIT`)
-                        generateSecret(web3)
-//                    commit(randao, commitment, participantAddress)
-                        committed = true
-                    }
-                    break;
-                case RandaoStage.REVEAL:
-                    if (revealed == false) {
-                        console.log(`REVEAL`)
-//                    reveal(randao, secret, participantAddress)
-                        revealed = true
-                    }
-                    break;
-                case RandaoStage.WAITING_COMMIT:
-                case RandaoStage.FINISHED:
-                    committed = revealed = false
-                    break;
-                default:
-                    console.error(`unknown state: ${state}`)
-                    break;
-            }
-        })
-    }).catch((e) => {
-        console.error(`Error: ${e}`)
-        throw e
-    })
-}
-
-
-/**
- * Generate a 32 byte secret number using crypto randomBytes.
- */
-
-function generateSecret(web3) {
-    const buf = crypto.randomBytes(32);
-    const hexStr = buf.toString('hex')
-    console.log(`${hexStr}`)
-    secret = web3.toDecimal(`0x${hexStr}`)
-    console.log(`${secret}`)
-    commitment = web3.sha3(hexStr, 'hex')
-    console.log(`${commitment}`)
-}
-
-
-/**
- * Send commitment.
- *
- * @param randao Pudding abstraction for Randao.sol contract (truffle generated)
- * @param commitment Commitment - the SHA3 of the secret
- * @param accountAddress Address of participant
- */
-
-function commit(randao, commitment, accountAddress) {
-    randao.commit(commitment, {
-        from: accountAddress
-    }).then((tx) => {
-        console.log(`commit done (tx:${tx})\n`)
-    }).catch((e) => {
-        console.error(`commit failed`)
-        throw e
-    })
-}
-
-
-/**
- * Send reveal.
- *
- * @param randao Pudding abstraction for Randao.sol contract (truffle generated)
- * @param reveal Secret reveal
- * @param accountAddress Address of participant
- */
-
-function reveal(randao, reveal, accountAddress) {
-    randao.reveal(reveal, {
-        from: accountAddress
-    }).then((tx) => {
-        console.log(`reveal done (tx:${tx})\n`)
-    }).catch((e) => {
-        console.error(`reveal failed`)
-        throw e
-    })
-}
-
-
-/**
- * Determine current stage of Randao.
- *
- * @param campaignDetails Array of campaign details
- * @param curBlk Current block number on Ethereum
- * @return corresponding RandaoStage
- */
-
-function randaoState(campaignDetails, curBlk) {
-    const endBlk = campaignDetails[0]
-    const balkline = campaignDetails[2]
-    const deadline = campaignDetails[3]
-
-    let state
-
-    if (curBlk > endBlk)
-        state = RandaoStage.FINISHED
-    else if (curBlk >= endBlk - deadline)
-        state = RandaoStage.REVEAL
-    else if (curBlk >= endBlk - balkline)
-        state = RandaoStage.COMMIT
-    else
-        state = RandaoStage.WAITING_COMMIT
-
-    return state
-}
 
 
 /**
@@ -166,13 +26,16 @@ class ParticipantDaemon {
      * Constructor
      * @param web3 Connected instance of web3.js
      * @param randao Pudding abstraction for Randao.sol contract (truffle generated)
+     * @param config Config properties
      * @param participantAddress Ethereum account address for the participant
      */
 
-    constructor(web3, randao, participantAddress) {
+    constructor(web3, randao, config, participantAddress) {
         this.web3 = web3
         this.randao = randao
+        this.config = config
         this.participantAddress = participantAddress
+        this.pAddrShort = `${participantAddress.substr(0, 6)}...`
     }
 
     /**
@@ -180,8 +43,7 @@ class ParticipantDaemon {
      */
 
     start() {
-        this.intervalId = setInterval(doCheck, CHECK_INTERVAL,
-            this.web3, this.randao, this.participantAddress)
+        this.intervalId = setInterval(this.doCheck, CHECK_INTERVAL, this)
     }
 
     /**
@@ -190,6 +52,112 @@ class ParticipantDaemon {
 
     stop() {
         cancelInterval(this.intervalId)
+    }
+
+    /**
+     * Check the current stage of randao. If it is inside a commit or reveal round
+     * and we havn't yet submitted a value then go ahead and submit. Otherwise do
+     * nothing.
+     */
+
+    doCheck(self) {
+        const curBlk = self.web3.eth.blockNumber
+
+        let cId, curCampaign
+        self.randao.numCampaigns.call().then((numCampaigns) => {
+            cId = numCampaigns - 1
+            if (cId < 0) {
+                self.log(`No campaigns yet ...`)
+                return
+            }
+            self.randao.campaigns.call(cId).then((campaign) => {
+                const stage = utils.getRandaoStage(curBlk, campaign[0], campaign[2], campaign[3])
+                switch (stage) {
+                    case RandaoStage.COMMIT:
+                        if (self.committed == false) {
+                            self.generateSecret()
+                            self.commit(self)
+                        }
+                        break;
+
+                    case RandaoStage.REVEAL:
+                        if (self.revealed == false) {
+                            self.reveal(self)
+                        }
+                        break;
+
+                    case RandaoStage.WAITING_COMMIT:
+                    case RandaoStage.FINISHED:
+                        self.committed = self.revealed = false
+                        break;
+
+                    default:
+                        self.logErr(`unknown stage: ${stage}`)
+                        break;
+                }
+            })
+        }).catch((e) => {
+            self.logErr(`Error: ${e}`)
+            throw e
+        })
+    }
+
+    /**
+     * Send commitment.
+     */
+
+    commit(self) {
+        self.log('sendTx commit()')
+        self.randao.commit(self.commitment, {
+            from: self.participantAddress,
+            value: self.config.deposit
+        }).then((tx) => {
+            self.log(`commit done (tx:${tx})\n`)
+            self.committed = true
+        }).catch((e) => {
+            self.logErr(`commit failed`)
+            throw e
+        })
+    }
+
+    /**
+     * Send reveal.
+     */
+
+    reveal(self) {
+        self.log('sendTx reveal()')
+        self.randao.reveal(self.secret, {
+            from: self.participantAddress
+        }).then((tx) => {
+            self.log(`reveal done (tx:${tx})\n`)
+            self.revealed = true
+        }).catch((e) => {
+            self.logErr(`reveal failed`)
+            throw e
+        })
+    }
+
+    /**
+     * Create secret and corresponding commitment
+     */
+
+    generateSecret() {
+        this.log('Generating secret for commit ...')
+        const hexStr = utils.random32()
+        this.secret = this.web3.toDecimal(`0x${hexStr}`)
+        this.commitment = this.web3.sha3(hexStr, 'hex')
+    }
+
+    /**
+     * Logger routines
+     */
+
+    log(msg) {
+        utils.log(`[${FILENAME}] [${this.pAddrShort}] ${msg}`)
+    }
+
+    logErr(msg) {
+        utils.log(`[${FILENAME}] [${this.pAddrShort}] ${msg}`, true)
     }
 
 }
