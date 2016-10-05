@@ -2,6 +2,9 @@
  * Randao participant daemon. Runs continuously monitoring a given Randao.
  * Participates in Randao by submitting commits and reveals when they are
  * required. Finally it will withdrawing any bounties at the end of a round.
+ *
+ * If a transaction fails with an error the script is terminated. This ensures
+ * we don't keep sending transactions and draining our gas.
  */
 
 'use strict'
@@ -11,9 +14,6 @@ const RandaoStage = utils.RandaoStage
 
 const path = require('path')
 const FILENAME = path.basename(__filename)
-
-// TODO: move to config
-const CHECK_INTERVAL = 5000
 
 
 /**
@@ -35,7 +35,9 @@ class ParticipantDaemon {
         this.randao = randao
         this.config = config
         this.participantAddress = participantAddress
-        this.pAddrShort = `${participantAddress.substr(0, 6)}...`
+        this.logPrefix = `[${FILENAME}] [${participantAddress.substr(0, 6)}...]`
+        this.committed = false
+        this.revealed = false
     }
 
     /**
@@ -43,7 +45,7 @@ class ParticipantDaemon {
      */
 
     start() {
-        this.intervalId = setInterval(this.doCheck, CHECK_INTERVAL, this)
+        this.intervalId = setInterval(this.doCheck, this.config.participantCheckInterval, this)
     }
 
     /**
@@ -70,19 +72,21 @@ class ParticipantDaemon {
                 self.log(`No campaigns yet ...`)
                 return
             }
+
             self.randao.campaigns.call(cId).then((campaign) => {
                 const stage = utils.getRandaoStage(curBlk, campaign[0], campaign[2], campaign[3])
                 switch (stage) {
                     case RandaoStage.COMMIT:
                         if (self.committed == false) {
-                            self.generateSecret()
-                            self.commit(self)
+                            self.generateSecret(() => {
+                                self.commit(self, cId)
+                            })
                         }
                         break;
 
                     case RandaoStage.REVEAL:
-                        if (self.revealed == false) {
-                            self.reveal(self)
+                        if (self.committed == true && self.revealed == false) {
+                            self.reveal(self, cId)
                         }
                         break;
 
@@ -97,8 +101,8 @@ class ParticipantDaemon {
                 }
             })
         }).catch((e) => {
-            self.logErr(`Error: ${e}`)
-            throw e
+            self.logErr(`Error`, e)
+            self.terminate()
         })
     }
 
@@ -106,17 +110,18 @@ class ParticipantDaemon {
      * Send commitment.
      */
 
-    commit(self) {
-        self.log('sendTx commit()')
-        self.randao.commit(self.commitment, {
+    commit(self, cId) {
+        self.log('sendTx commit() with commitment ' + self.commitment)
+        self.randao.commit(cId, self.commitment, {
             from: self.participantAddress,
-            value: self.config.deposit
+            value: self.config.deposit,
+            gas: 1000000
         }).then((tx) => {
             self.log(`commit done (tx:${tx})\n`)
             self.committed = true
         }).catch((e) => {
-            self.logErr(`commit failed`)
-            throw e
+            self.logErr(`commit failed`, e)
+            self.terminate()
         })
     }
 
@@ -124,16 +129,16 @@ class ParticipantDaemon {
      * Send reveal.
      */
 
-    reveal(self) {
+    reveal(self, cId) {
         self.log('sendTx reveal()')
-        self.randao.reveal(self.secret, {
+        self.randao.reveal(cId, self.secret.toString(10), {
             from: self.participantAddress
         }).then((tx) => {
             self.log(`reveal done (tx:${tx})\n`)
             self.revealed = true
         }).catch((e) => {
-            self.logErr(`reveal failed`)
-            throw e
+            self.logErr(`reveal failed`, e)
+            self.terminate()
         })
     }
 
@@ -141,11 +146,19 @@ class ParticipantDaemon {
      * Create secret and corresponding commitment
      */
 
-    generateSecret() {
+    generateSecret(callback) {
         this.log('Generating secret for commit ...')
         const hexStr = utils.random32()
         this.secret = this.web3.toDecimal(`0x${hexStr}`)
-        this.commitment = this.web3.sha3(hexStr, 'hex')
+        this.log(`secret dec: ${this.secret}`)
+
+        let self = this
+        // use contract sha3 as it produces a different value to web3.sha3 ..
+        this.randao.shaCommit.call(this.secret.toString(10)).then((shaCommit) => {
+            self.commitment = shaCommit
+            self.log(`commitment: ${self.commitment}`)
+            callback()
+        })
     }
 
     /**
@@ -153,13 +166,24 @@ class ParticipantDaemon {
      */
 
     log(msg) {
-        utils.log(`[${FILENAME}] [${this.pAddrShort}] ${msg}`)
+        utils.log(`${this.logPrefix} ${msg}`)
     }
 
-    logErr(msg) {
-        utils.log(`[${FILENAME}] [${this.pAddrShort}] ${msg}`, true)
+    logErr(msg, err) {
+        let logMsg = `${this.logPrefix} ${msg}`
+        if (err)
+            logMsg += ` ERROR [${err}]`
+        utils.log(logMsg, true)
     }
 
+    /**
+     * Exit the process - called when an exception has occured.
+     */
+
+    terminate() {
+        this.log(`terminating!`)
+        process.exit(-1)
+    }
 }
 
 module.exports = ParticipantDaemon

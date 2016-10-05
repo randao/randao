@@ -11,13 +11,6 @@ const RandaoStage = utils.RandaoStage
 const path = require('path')
 const FILENAME = path.basename(__filename)
 
-// TODO: move these to config
-const CHECK_INTERVAL = 5000
-const FULL_ROUND_LENGTH = 20 // blocks
-// see Randao.newCampaign for an explanation of these:
-const BALKLINE = 16
-const DEADLINE = 8
-
 
 /**
  * Campaign creation deemon class. Provides just start() and stop().
@@ -43,7 +36,7 @@ class CampaignCreatorDaemon {
      */
 
     start() {
-        this.intervalId = setInterval(this.doCheck, CHECK_INTERVAL, this)
+        this.intervalId = setInterval(this.doCheck, this.config.campaignCreatorCheckInterval, this)
     }
 
     /**
@@ -91,8 +84,9 @@ class CampaignCreatorDaemon {
      */
 
     newCampaign(self, curBlk) {
-        const randaoBlk = curBlk + FULL_ROUND_LENGTH
-        self.randao.newCampaign(randaoBlk, self.config.deposit, BALKLINE, DEADLINE, {
+        const cfg = self.config
+        const randaoBlk = curBlk + cfg.randaoRoundLength
+        self.randao.newCampaign(randaoBlk, cfg.deposit, cfg.randaoBalkline, cfg.randaoDeadline, {
             gas: 150000
         }).then((tx) => {
             self.log(`campaign created (tx:${tx})\n`)
@@ -115,8 +109,11 @@ class CampaignCreatorDaemon {
         utils.log(`[${FILENAME}] ${msg}`)
     }
 
-    logErr(msg) {
-        utils.log(`[${FILENAME}] ${msg}`, true)
+    logErr(msg, err) {
+        let logMsg = `[${FILENAME}] ${msg}`
+        if (err)
+            logMsg += ` ERROR:${err}`
+        utils.log(logMsg, true)
     }
 
 }

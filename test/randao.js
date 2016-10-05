@@ -19,7 +19,7 @@ contract('Randao', function(accounts) {
       return randao.follow(campaignID -1, { from: accounts[1], value: web3.toWei(10, "ether") });
     }).then(function(followed){
       secret = web3.toBigNumber('131242344353464564564574574567456');
-      console.log('secret:', secret.toString(10));
+      console.log('secret:', secret.toString(10)); // base 10
       return randao.shaCommit.call(secret.toString(10), {from: accounts[1]});
     }).then((shaCommit) => {
       commitment = shaCommit;

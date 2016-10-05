@@ -14,10 +14,10 @@ contract Randao {
   }
 
   struct Campaign {
-      uint32    bnum;
+      uint32    bnum;               // Randao ends here - reveals complete and number can be calculated
       uint96    deposit;
-      uint16    commitBalkline;
-      uint16    commitDeadline;
+      uint16    commitBalkline;     // commits can start this many blocks before bnum
+      uint16    commitDeadline;     // commits end this many blocks after balkline (so this is the length of the commit stage)
 
       uint256   random;
       bool      settled;

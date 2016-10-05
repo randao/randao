@@ -8,6 +8,11 @@
 const config = {
     rpc: 'http://localhost:4500',
     deposit: 1000,
+    participantCheckInterval: 5000,
+    campaignCreatorCheckInterval: 5000,
+    randaoRoundLength: 20, // blocks
+    randaoBalkline: 16, // blocks before end to start accepting commits
+    randaoDeadline: 8 // blocks before end to start accepting reveals
 }
 
 const Web3 = require('web3')
@@ -22,6 +27,12 @@ web3.eth.defaultAccount = web3.eth.accounts[0]
 
 Randao.setProvider(web3.currentProvider)
 const randao = Randao.deployed()
+
+var events = randao.allEvents();
+events.watch(function(e, event){
+  if (!e)
+    console.log(event);
+})
 
 const creator = new CampaignCreatorDaemon(web3, randao, config)
 creator.start()
