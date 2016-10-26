@@ -1,4 +1,4 @@
-pragma solidity ^0.4.2;
+pragma solidity ^0.4.3;
 
 contract Counter {
   uint public counter = 0;
