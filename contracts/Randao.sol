@@ -1,4 +1,4 @@
-pragma solidity ^0.4.2;
+pragma solidity ^0.4.3;
 
 // version 1.0
 contract Randao {
@@ -92,7 +92,7 @@ contract Randao {
   event LogFollow(uint256 indexed CampaignId, address indexed from, uint256 bountypot);
 
   function follow(uint256 _campaignID)
-    external returns (bool) {
+    external payable returns (bool) {
       Campaign c = campaigns[_campaignID];
       Consumer consumer = c.consumers[msg.sender];
       return followCampaign(_campaignID, c, consumer);
@@ -108,7 +108,7 @@ contract Randao {
       Campaign storage c,
       Consumer storage consumer
   ) checkFollowPhase(c.bnum, c.commitDeadline)
-    blankAddress(consumer.caddr) internal payable returns (bool) {
+    blankAddress(consumer.caddr) internal returns (bool) {
       c.bountypot += msg.value;
       c.consumers[msg.sender] = Consumer(msg.sender, msg.value);
       LogFollow(_campaignID, msg.sender, msg.value);
