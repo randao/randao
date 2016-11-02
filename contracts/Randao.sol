@@ -1,6 +1,8 @@
 pragma solidity ^0.4.3;
 
 // version 1.0
+import "TheDivine.sol";
+
 contract Randao {
   struct Participant {
       uint256   secret;
@@ -30,6 +32,9 @@ contract Randao {
       mapping (address => Consumer) consumers;
       mapping (address => Participant) participants;
   }
+
+  address theDivineAddress;
+  TheDivine theDivine;
 
   uint256 public numCampaigns;
   Campaign[] public campaigns;
@@ -64,6 +69,13 @@ contract Randao {
       if (_commitDeadline >= _commitBalkline) throw;
       if (block.number >= _bnum - _commitBalkline) throw;
       _;
+  }
+
+  function setTheDivineAddress(address divineAddress) {
+      if(founder == msg.sender){
+        theDivineAddress = divineAddress;
+        theDivine = TheDivine(divineAddress);
+      }
   }
 
   function newCampaign(
@@ -135,6 +147,7 @@ contract Randao {
     checkCommitPhase(c.bnum, c.commitBalkline, c.commitDeadline)
     beBlank(c.participants[msg.sender].commitment) internal {
       c.participants[msg.sender] = Participant(0, _hs, 0, false, false);
+      c.random = theDivine.GetPower();
       c.commitNum++;
       LogCommit(_campaignID, msg.sender, _hs);
   }
