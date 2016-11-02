@@ -35,9 +35,6 @@ contract Randao {
   Campaign[] public campaigns;
   address public founder;
 
-  // Prevents methods from perfoming any value transfer
-  modifier noEther() { if (msg.value > 0) throw; _; }
-
   modifier blankAddress(address _n) { if (_n != 0) throw; _; }
 
   modifier moreThanZero(uint256 _deposit) { if (_deposit <= 0) throw; _; }
@@ -143,7 +140,7 @@ contract Randao {
   }
 
   // For test
-  function getCommitment(uint256 _campaignID) noEther external constant returns (bytes32) {
+  function getCommitment(uint256 _campaignID) external constant returns (bytes32) {
       Campaign c = campaigns[_campaignID];
       Participant p = c.participants[msg.sender];
       return p.commitment;
@@ -155,7 +152,7 @@ contract Randao {
 
   event LogReveal(uint256 indexed CampaignId, address indexed from, uint256 secret);
 
-  function reveal(uint256 _campaignID, uint256 _s) noEther external {
+  function reveal(uint256 _campaignID, uint256 _s) external {
       Campaign c = campaigns[_campaignID];
       Participant p = c.participants[msg.sender];
       revealCampaign(_campaignID, _s, c, p);
@@ -189,7 +186,7 @@ contract Randao {
 
   modifier bountyPhase(uint256 _bnum){ if (block.number < _bnum) throw; _; }
 
-  function getRandom(uint256 _campaignID) noEther external returns (uint256) {
+  function getRandom(uint256 _campaignID) external returns (uint256) {
       Campaign c = campaigns[_campaignID];
       return returnRandom(c);
   }
@@ -206,7 +203,7 @@ contract Randao {
   // 2. Someone revels, but some does not,Campaign fails.
   // The revealer can get the deposit and the fines are distributed.
   // 3. Nobody reveals, Campaign fails.Every commiter can get his deposit.
-  function getMyBounty(uint256 _campaignID) noEther external {
+  function getMyBounty(uint256 _campaignID) external {
       Campaign c = campaigns[_campaignID];
       Participant p = c.participants[msg.sender];
       transferBounty(c, p);
@@ -256,7 +253,7 @@ contract Randao {
   }
 
   // If the campaign fails, the consumers can get back the bounty.
-  function refundBounty(uint256 _campaignID) noEther external {
+  function refundBounty(uint256 _campaignID) external {
       Campaign c = campaigns[_campaignID];
       returnBounty(_campaignID, c);
   }
