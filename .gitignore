@@ -13,3 +13,4 @@ geth-test/data/
 out.log.geth
 
 node_modules/
+.idea/

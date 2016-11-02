@@ -1,6 +1,7 @@
-Next
+# 1.02 (2016.11.2)
 
 * Added shaCommit function (2016.8.26)
+* Update to solidity 0.4x (2016.11.2)
 
 ------
 
