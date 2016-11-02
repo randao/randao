@@ -1,3 +1,5 @@
+pragma solidity ^0.4.3;
+
 // version 1.0
 contract Randao {
   struct Participant {
@@ -33,18 +35,15 @@ contract Randao {
   Campaign[] public campaigns;
   address public founder;
 
-  // Prevents methods from perfoming any value transfer
-  modifier noEther() { if (msg.value > 0) throw; _}
+  modifier blankAddress(address _n) { if (_n != 0) throw; _; }
 
-  modifier blankAddress(address _n) { if (_n != 0) throw; _}
+  modifier moreThanZero(uint256 _deposit) { if (_deposit <= 0) throw; _; }
 
-  modifier moreThanZero(uint256 _deposit) { if (_deposit <= 0) throw; _}
+  modifier notBeBlank(bytes32 _s) { if (_s == "") throw; _; }
 
-  modifier notBeBlank(bytes32 _s) { if (_s == "") throw;  _}
+  modifier beBlank(bytes32 _s) { if (_s != "") throw; _; }
 
-  modifier beBlank(bytes32 _s) { if (_s != "") throw; _}
-
-  modifier beFalse(bool _t) { if (_t) throw; _}
+  modifier beFalse(bool _t) { if (_t) throw; _; }
 
   function Randao() {
       founder = msg.sender;
@@ -64,7 +63,7 @@ contract Randao {
       if (_commitDeadline <= 0) throw;
       if (_commitDeadline >= _commitBalkline) throw;
       if (block.number >= _bnum - _commitBalkline) throw;
-      _
+      _;
   }
 
   function newCampaign(
@@ -72,7 +71,8 @@ contract Randao {
       uint96 _deposit,
       uint16 _commitBalkline,
       uint16 _commitDeadline
-  ) timeLineCheck(_bnum, _commitBalkline, _commitDeadline)
+  ) payable
+    timeLineCheck(_bnum, _commitBalkline, _commitDeadline)
     moreThanZero(_deposit) external returns (uint256 _campaignID) {
       _campaignID = campaigns.length++;
       Campaign c = campaigns[_campaignID];
@@ -89,7 +89,7 @@ contract Randao {
   event LogFollow(uint256 indexed CampaignId, address indexed from, uint256 bountypot);
 
   function follow(uint256 _campaignID)
-    external returns (bool) {
+    external payable returns (bool) {
       Campaign c = campaigns[_campaignID];
       Consumer consumer = c.consumers[msg.sender];
       return followCampaign(_campaignID, c, consumer);
@@ -97,7 +97,7 @@ contract Randao {
 
   modifier checkFollowPhase(uint256 _bnum, uint16 _commitDeadline) {
       if (block.number > _bnum - _commitDeadline) throw;
-      _
+      _;
   }
 
   function followCampaign(
@@ -114,17 +114,17 @@ contract Randao {
 
   event LogCommit(uint256 indexed CampaignId, address indexed from, bytes32 commitment);
 
-  function commit(uint256 _campaignID, bytes32 _hs) notBeBlank(_hs) external {
+  function commit(uint256 _campaignID, bytes32 _hs) notBeBlank(_hs) external payable {
       Campaign c = campaigns[_campaignID];
       commitmentCampaign(_campaignID, _hs, c);
   }
 
-  modifier checkDeposit(uint256 _deposit) { if (msg.value != _deposit) throw; _}
+  modifier checkDeposit(uint256 _deposit) { if (msg.value != _deposit) throw; _; }
 
   modifier checkCommitPhase(uint256 _bnum, uint16 _commitBalkline, uint16 _commitDeadline) {
       if (block.number < _bnum - _commitBalkline) throw;
       if (block.number > _bnum - _commitDeadline) throw;
-      _
+      _;
   }
 
   function commitmentCampaign(
@@ -140,7 +140,7 @@ contract Randao {
   }
 
   // For test
-  function getCommitment(uint256 _campaignID) noEther external constant returns (bytes32) {
+  function getCommitment(uint256 _campaignID) external constant returns (bytes32) {
       Campaign c = campaigns[_campaignID];
       Participant p = c.participants[msg.sender];
       return p.commitment;
@@ -152,7 +152,7 @@ contract Randao {
 
   event LogReveal(uint256 indexed CampaignId, address indexed from, uint256 secret);
 
-  function reveal(uint256 _campaignID, uint256 _s) noEther external {
+  function reveal(uint256 _campaignID, uint256 _s) external {
       Campaign c = campaigns[_campaignID];
       Participant p = c.participants[msg.sender];
       revealCampaign(_campaignID, _s, c, p);
@@ -161,12 +161,12 @@ contract Randao {
   modifier checkRevealPhase(uint256 _bnum, uint16 _commitDeadline) {
       if (block.number <= _bnum - _commitDeadline) throw;
       if (block.number >= _bnum) throw;
-      _
+      _;
   }
 
   modifier checkSecret(uint256 _s, bytes32 _commitment) {
       if (sha3(_s) != _commitment) throw;
-      _
+      _;
   }
 
   function revealCampaign(
@@ -184,9 +184,9 @@ contract Randao {
       LogReveal(_campaignID, msg.sender, _s);
   }
 
-  modifier bountyPhase(uint256 _bnum){ if (block.number < _bnum) throw; _}
+  modifier bountyPhase(uint256 _bnum){ if (block.number < _bnum) throw; _; }
 
-  function getRandom(uint256 _campaignID) noEther external returns (uint256) {
+  function getRandom(uint256 _campaignID) external returns (uint256) {
       Campaign c = campaigns[_campaignID];
       return returnRandom(c);
   }
@@ -203,7 +203,7 @@ contract Randao {
   // 2. Someone revels, but some does not,Campaign fails.
   // The revealer can get the deposit and the fines are distributed.
   // 3. Nobody reveals, Campaign fails.Every commiter can get his deposit.
-  function getMyBounty(uint256 _campaignID) noEther external {
+  function getMyBounty(uint256 _campaignID) external {
       Campaign c = campaigns[_campaignID];
       Participant p = c.participants[msg.sender];
       transferBounty(c, p);
@@ -253,19 +253,19 @@ contract Randao {
   }
 
   // If the campaign fails, the consumers can get back the bounty.
-  function refundBounty(uint256 _campaignID) noEther external {
+  function refundBounty(uint256 _campaignID) external {
       Campaign c = campaigns[_campaignID];
       returnBounty(_campaignID, c);
   }
 
   modifier campaignFailed(uint32 _commitNum, uint32 _revealsNum) {
       if (_commitNum == _revealsNum && _commitNum != 0) throw;
-      _
+      _;
   }
 
   modifier beConsumer(address _caddr) {
       if (_caddr != msg.sender) throw;
-      _
+      _;
   }
 
   function returnBounty(uint256 _campaignID, Campaign storage c)
