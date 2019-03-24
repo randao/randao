@@ -1,53 +1,34 @@
-var Timecop = require('./helper/timecop');
+const Randao = artifacts.require('Randao');
 
-contract('Randao', function(accounts) {
-  it("randao campaign lifecycle", function() {
-    var randao = Randao.deployed();
-    var bnum = web3.eth.blockNumber + 20;
-    var deposit = web3.toWei('10', 'ether');
-    var campaignID;
-    var commitment;
-    var secret;
+contract('Randao', (accounts) => {
+  const founder = accounts[0];
+  let randao, bnum, campaignID, commit, commitBalkline,
+    commitDeadline, commitment, deposit, secret;
 
-    console.log('target blockNumber: ', bnum);
-    console.log('newCampaign at blockNumber: ', web3.eth.blockNumber);
-    return randao.newCampaign(bnum, deposit, 12, 6, {from: accounts[0], value:web3.toWei(10, "ether")}).then((tx) => {
-      return randao.numCampaigns.call();
-    }).then(function(campaignID){
-      assert.equal(campaignID.toNumber(), 1);
+  beforeEach(async () => {
+    randao = await Randao.new();
+  });
 
-      return randao.follow(campaignID -1, { from: accounts[1], value: web3.toWei(10, "ether") });
-    }).then(function(followed){
-      secret = web3.toBigNumber('131242344353464564564574574567456');
-      console.log('secret:', secret.toString(10));
-      return randao.shaCommit.call(secret.toString(10), {from: accounts[1]});
-    }).then((shaCommit) => {
-      commitment = shaCommit;
-      console.log('commitment', commitment);
-      return Timecop.ff(9);
-    }).then(() => {
-      console.log('commit', commitment);
-      console.log(web3.eth.getBalance(accounts[1]));
-      return randao.commit(campaignID - 1, commitment, {value: web3.toWei('10', 'ether'), from: accounts[1]})
-    }).then(() => {
-      return randao.getCommitment.call(campaignID - 1, {from: accounts[1]});
-    }).then((commit) => {
-      assert.equal(commit, commitment);
-      return Timecop.ff(5);
-    }).then(() => {
-      console.log('reveal at blockNumber: ', web3.eth.blockNumber);
-      return randao.reveal(campaignID - 1, secret.toString(10), {from: accounts[1]});
-    }).then(() => {
-      return Timecop.ff(5);
-    }).then(() => {
-      console.log('getRandom');
-      return randao.getRandom.call(campaignID - 1, {from: accounts[1]});
-    }).then((random) => {
-      console.log('random: ', random.toNumber());
-      return randao.getRandom(campaignID - 1, { from: accounts[1] });
-    }).then((tx) => {
-      return randao.getMyBounty(campaignID -1, { from: accounts[1] });
-    }).then(() => {
+  it('sets the founder on deployment', async () => {
+    const deployedFounder = await randao.founder.call();
+    assert.equal(founder, deployedFounder);
+  });
+
+  describe('newCampaign', () => {
+    context('with valid timeline and deposit', () => {
+      beforeEach(async () => {
+        bnum = await web3.eth.getBlock("latest");
+        bnum = bnum.number + 20;
+        commitBalkline = 12;
+        commitDeadline = 6;
+        deposit = web3.utils.toWei('10', 'ether');
+      });
+
+      it('adds a new campaign', async () => {
+        await randao.newCampaign(bnum, deposit, commitBalkline, commitDeadline, {from: founder, value: deposit});
+        const campaigns = await randao.numCampaigns.call();
+        assert.equal(campaigns.toString(), "1");
+      });
     });
   });
 });
