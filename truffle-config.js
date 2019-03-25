@@ -16,5 +16,19 @@ module.exports = {
         },
       }
     }
+  },
+  build: {
+    // Copy ./app/index.html (right hand side) to ./build/index.html.
+    "index.html": "index.html",
+    "app.js": [
+      // Paths relative to "app" directory that should be
+      // concatenated and processed during build.
+      "javascripts/app.js"
+    ],
+    "app.css": [
+      // Paths relative to "app" directory that should be
+      // concatenated and processed during build.
+      "stylesheets/app.css"
+    ]
   }
 };
