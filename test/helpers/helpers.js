@@ -21,4 +21,16 @@ const mineBlocks = async (blocks) => {
   }
 };
 
+const assertThrowsAsync = async (fn, regExp) => {
+  let f = () => {};
+  try {
+    await fn();
+  } catch(e) {
+    f = () => {throw e};
+  } finally {
+    assert.throws(f, regExp);
+  }
+}
+
+exports.assertThrowsAsync = assertThrowsAsync;
 exports.mineBlocks = mineBlocks;
