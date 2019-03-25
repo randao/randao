@@ -30,7 +30,17 @@ const assertThrowsAsync = async (fn, regExp) => {
   } finally {
     assert.throws(f, regExp);
   }
-}
+};
+
+const setupNewCampaign = async (randao, consumer) => {
+  let bnum = await web3.eth.getBlock("latest");
+  bnum = bnum.number + 20;
+  const commitBalkline = 12;
+  const commitDeadline = 6;
+  const deposit = web3.utils.toWei('10', 'ether');
+  await randao.newCampaign(bnum, deposit, commitBalkline, commitDeadline, {from: consumer, value: deposit});
+};
 
 exports.assertThrowsAsync = assertThrowsAsync;
 exports.mineBlocks = mineBlocks;
+exports.setupNewCampaign = setupNewCampaign;

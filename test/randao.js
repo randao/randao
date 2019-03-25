@@ -7,8 +7,10 @@ contract('Randao', (accounts) => {
   const follower1 = accounts[2];
   const committer1 = accounts[3];
 
+  let deposit = web3.utils.toWei('10', 'ether');
+
   let randao, bnum, campaignID, commit, commitBalkline,
-    commitDeadline, commitment, deposit, secret;
+    commitDeadline, commitment, secret;
 
   beforeEach(async () => {
     randao = await Randao.new();
@@ -119,12 +121,7 @@ contract('Randao', (accounts) => {
   describe('follow', () => {
     context('with valid campaign and deposit', () => {
       beforeEach(async () => {
-        bnum = await web3.eth.getBlock("latest");
-        bnum = bnum.number + 20;
-        commitBalkline = 12;
-        commitDeadline = 6;
-        deposit = web3.utils.toWei('10', 'ether');
-        await randao.newCampaign(bnum, deposit, commitBalkline, commitDeadline, {from: consumer, value: deposit});
+        await h.setupNewCampaign(randao, consumer);
       });
 
       it('follows the campaign with value added for bounty', async () => {
@@ -150,12 +147,7 @@ contract('Randao', (accounts) => {
   describe('commitmentCampaign', () => {
     context('before the commit phase', () => {
       beforeEach(async () => {
-        bnum = await web3.eth.getBlock("latest");
-        bnum = bnum.number + 20;
-        commitBalkline = 12;
-        commitDeadline = 6;
-        deposit = web3.utils.toWei('10', 'ether');
-        await randao.newCampaign(bnum, deposit, commitBalkline, commitDeadline, {from: consumer, value: deposit});
+        await h.setupNewCampaign(randao, consumer);
         await randao.follow.call(0, {from: follower1, value: deposit});
         secret = new web3.utils.BN('131242344353464564564574574567456');
       });
@@ -168,7 +160,7 @@ contract('Randao', (accounts) => {
       });
     });
 
-    context('after a valid number of blocks', () => {
+    context('during the commit phase', () => {
       beforeEach(async () => {
         bnum = await web3.eth.getBlock("latest");
         bnum = bnum.number + 20;
@@ -205,12 +197,7 @@ contract('Randao', (accounts) => {
 
     context('after the commit phase', () => {
       beforeEach(async () => {
-        bnum = await web3.eth.getBlock("latest");
-        bnum = bnum.number + 20;
-        commitBalkline = 12;
-        commitDeadline = 6;
-        deposit = web3.utils.toWei('10', 'ether');
-        await randao.newCampaign(bnum, deposit, commitBalkline, commitDeadline, {from: consumer, value: deposit});
+        await h.setupNewCampaign(randao, consumer);
         await randao.follow.call(0, {from: follower1, value: deposit});
         h.mineBlocks(19);
         secret = new web3.utils.BN('131242344353464564564574574567456');
@@ -226,14 +213,26 @@ contract('Randao', (accounts) => {
   });
 
   describe('reveal', () => {
-    context('after a valid number of blocks', () => {
+    context('before the reveal phase', () => {
       beforeEach(async () => {
-        bnum = await web3.eth.getBlock("latest");
-        bnum = bnum.number + 20;
-        commitBalkline = 12;
-        commitDeadline = 6;
-        deposit = web3.utils.toWei('10', 'ether');
-        await randao.newCampaign(bnum, deposit, commitBalkline, commitDeadline, {from: consumer, value: deposit});
+        await h.setupNewCampaign(randao, consumer);
+        await randao.follow.call(0, {from: follower1, value: deposit});
+        h.mineBlocks(9);
+        secret = new web3.utils.BN('131242344353464564564574574567456');
+        commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
+        await randao.commit(0, commitment, {from: committer1, value: deposit});
+      });
+
+      it('does not accept reveals', async () => {
+        await h.assertThrowsAsync(async () => {
+          await randao.reveal(0, secret, {from: committer1});
+        }, '');
+      });
+
+    });
+    context('during the reveal phase', () => {
+      beforeEach(async () => {
+        await h.setupNewCampaign(randao, consumer);
         await randao.follow.call(0, {from: follower1, value: deposit});
         h.mineBlocks(9);
         secret = new web3.utils.BN('131242344353464564564574574567456');
@@ -246,17 +245,49 @@ contract('Randao', (accounts) => {
         await randao.reveal(0, secret, {from: committer1});
       });
     });
+
+    context('after the reveal phase', () => {
+      beforeEach(async () => {
+        await h.setupNewCampaign(randao, consumer);
+        await randao.follow.call(0, {from: follower1, value: deposit});
+        h.mineBlocks(9);
+        secret = new web3.utils.BN('131242344353464564564574574567456');
+        commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
+        await randao.commit(0, commitment, {from: committer1, value: deposit});
+        h.mineBlocks(15);
+      });
+
+      it('does not accept reveals', async () => {
+        await h.assertThrowsAsync(async () => {
+          await randao.reveal(0, secret, {from: committer1});
+        }, '');
+      });
+    });
   });
 
   describe('getRandom', () => {
-    context('after a valid number of blocks', () => {
+    context('before the bounty phase', () => {
       beforeEach(async () => {
-        bnum = await web3.eth.getBlock("latest");
-        bnum = bnum.number + 20;
-        commitBalkline = 12;
-        commitDeadline = 6;
-        deposit = web3.utils.toWei('10', 'ether');
-        await randao.newCampaign(bnum, deposit, commitBalkline, commitDeadline, {from: consumer, value: deposit});
+        await h.setupNewCampaign(randao, consumer);
+        await randao.follow.call(0, {from: follower1, value: deposit});
+        h.mineBlocks(9);
+        secret = new web3.utils.BN('131242344353464564564574574567456');
+        commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
+        await randao.commit(0, commitment, {from: committer1, value: deposit});
+        h.mineBlocks(5);
+        await randao.reveal(0, secret, {from: committer1});
+      });
+
+      it('does not return the random number', async () => {
+        await h.assertThrowsAsync(async () => {
+          await randao.getRandom.call(0, {from: consumer});
+        }, '');
+      });
+    });
+
+    context('during the bounty phase', () => {
+      beforeEach(async () => {
+        await h.setupNewCampaign(randao, consumer);
         await randao.follow.call(0, {from: follower1, value: deposit});
         h.mineBlocks(9);
         secret = new web3.utils.BN('131242344353464564564574574567456');
@@ -271,18 +302,19 @@ contract('Randao', (accounts) => {
         const random = await randao.getRandom.call(0, {from: consumer});
         assert.equal(random.toString(), secret.toString());
       });
+
+      it('returns the random number after the bounty phase', async () => {
+        h.mineBlocks(15);
+        const random = await randao.getRandom.call(0, {from: consumer});
+        assert.equal(random.toString(), secret.toString());
+      });
     });
   });
 
   describe('getMyBounty', () => {
     context('after a valid campaign has ended', () => {
       beforeEach(async () => {
-        bnum = await web3.eth.getBlock("latest");
-        bnum = bnum.number + 20;
-        commitBalkline = 12;
-        commitDeadline = 6;
-        deposit = web3.utils.toWei('10', 'ether');
-        await randao.newCampaign(bnum, deposit, commitBalkline, commitDeadline, {from: consumer, value: deposit});
+        await h.setupNewCampaign(randao, consumer);
         await randao.follow.call(0, {from: follower1, value: deposit});
         h.mineBlocks(9);
         secret = new web3.utils.BN('131242344353464564564574574567456');
@@ -307,12 +339,7 @@ contract('Randao', (accounts) => {
   describe('refundBounty', () => {
     context('after a campaign has ended without revealing', () => {
       beforeEach(async () => {
-        bnum = await web3.eth.getBlock("latest");
-        bnum = bnum.number + 20;
-        commitBalkline = 12;
-        commitDeadline = 6;
-        deposit = web3.utils.toWei('10', 'ether');
-        await randao.newCampaign(bnum, deposit, commitBalkline, commitDeadline, {from: consumer, value: deposit});
+        await h.setupNewCampaign(randao, consumer);
         await randao.follow.call(0, {from: follower1, value: deposit});
         h.mineBlocks(9);
         secret = new web3.utils.BN('131242344353464564564574574567456');
