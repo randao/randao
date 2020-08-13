@@ -209,7 +209,7 @@ address public BeaconContractAddress=0x79474439753C7c70011C3b00e06e559378bAD040;
 
     modifier bountyPhase(uint256 _bnum){if (block.number < _bnum) revert(); _;}
     
-      function generateRandomNumber(uint256 _campaignID) external returns returns(bytes32){
+      function generateRandomNumber(uint256 _campaignID) public view returns(bytes32){
         uint blockNumber;
         bytes32 randomNumber;
         Beacon beacon=Beacon(BeaconContractAddress);
@@ -218,7 +218,7 @@ address public BeaconContractAddress=0x79474439753C7c70011C3b00e06e559378bAD040;
        
     }
 
-    function getRandom(uint256 _campaignID) external returns (uint256) {
+    function getRandom(uint256 _campaignID) external returns (bytes32) {
         Campaign storage c = campaigns[_campaignID];
         return generateRandomNumber(c);
     }
