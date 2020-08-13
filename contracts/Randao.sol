@@ -209,18 +209,21 @@ address public BeaconContractAddress=0x79474439753C7c70011C3b00e06e559378bAD040;
 
     modifier bountyPhase(uint256 _bnum){if (block.number < _bnum) revert(); _;}
     
-      function generateRandomNumber(uint256 _campaignID) public view returns(bytes32){
-        uint blockNumber;
-        bytes32 randomNumber;
-        Beacon beacon=Beacon(BeaconContractAddress);
-        (blockNumber,randomNumber)=beacon.getLatestRandomness();
-        return randomNumber;
-       
+      
+    function getRandom(uint256 _campaignID) external returns (uint256) {
+        Campaign storage c = campaigns[_campaignID];
+        return returnRandom(c);
     }
 
-    function getRandom(uint256 _campaignID) external returns (bytes32) {
-        Campaign storage c = campaigns[_campaignID];
-        return generateRandomNumber(c);
+    function returnRandom(Campaign storage c) internal bountyPhase(c.bnum) returns (uint256) {
+        if (c.revealsNum == c.commitNum ) {
+            c.settled = true;
+            uint blockNumber;
+            bytes32 randomNumber;
+            Beacon beacon=Beacon(BeaconContractAddress);
+            (blockNumber,randomNumber)=beacon.getLatestRandomness();
+            return c.random + uint256(randomNumber);
+        }
     }
 
 
@@ -229,6 +232,7 @@ address public BeaconContractAddress=0x79474439753C7c70011C3b00e06e559378bAD040;
     // 2. Someone revels, but some does not,Campaign fails.
     // The revealer can get the deposit and the fines are distributed.
     // 3. Nobody reveals, Campaign fails.Every commiter can get his deposit.
+    
     function getMyBounty(uint256 _campaignID) external {
         Campaign storage c = campaigns[_campaignID];
         Participant storage p = c.participants[msg.sender];
