@@ -82,16 +82,7 @@ address public BeaconContractAddress=0x79474439753C7c70011C3b00e06e559378bAD040;
     
     function setBeaconContractAddress(address _address) public  {
         BeaconContractAddress=_address;
-    }
-    
-    function generateRandomNumber() public view returns(bytes32){
-        uint blockNumber;
-        bytes32 randomNumber;
-        Beacon beacon=Beacon(BeaconContractAddress);
-        (blockNumber,randomNumber)=beacon.getLatestRandomness();
-        return randomNumber;
-       
-    }
+    }  
 
     function newCampaign(
         uint32 _bnum,
@@ -217,18 +208,21 @@ address public BeaconContractAddress=0x79474439753C7c70011C3b00e06e559378bAD040;
     }
 
     modifier bountyPhase(uint256 _bnum){if (block.number < _bnum) revert(); _;}
+    
+      function generateRandomNumber(uint256 _campaignID) external returns returns(bytes32){
+        uint blockNumber;
+        bytes32 randomNumber;
+        Beacon beacon=Beacon(BeaconContractAddress);
+        (blockNumber,randomNumber)=beacon.getLatestRandomness();
+        return randomNumber;
+       
+    }
 
     function getRandom(uint256 _campaignID) external returns (uint256) {
         Campaign storage c = campaigns[_campaignID];
-        return returnRandom(c);
+        return generateRandomNumber(c);
     }
 
-    function returnRandom(Campaign storage c) internal bountyPhase(c.bnum) returns (uint256) {
-        if (c.revealsNum == c.commitNum) {
-            c.settled = true;
-            return c.random;
-        }
-    }
 
     // The commiter get his bounty and deposit, there are three situations
     // 1. Campaign succeeds.Every revealer gets his deposit and the bounty.
