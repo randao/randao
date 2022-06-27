@@ -72,7 +72,7 @@ price is p ETH, the income is `r * p`. So each participant will get `(rp -
 1500n * gasPrice - Ccost) / n` from one time participation.
 The current gasPrice is 10 szabo, and estimate of contract consumption
 is 1500n gas, so estimate of net income is `(rp / n - 0.03)` ETH.
-Assuming each RNG has 10 participation, and the pledge is 1000ETH, the
+Assuming each RNG has 10 participations, and the pledge is 1000ETH, the
 minimum required income is 0.4 ETH, which over 0.001% profit in this
 case. So if the RNG is requested only once, the service price is 0.4 ETH,
 and if it is requested 10 times, the price is just 0.04 ETH for each
