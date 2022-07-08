@@ -1,7 +1,20 @@
 pragma solidity ^0.5.0;
 
-// version 1.0
+// Experimenting RANDAO + VDF on version 1.0
+// Justin Drake https://ethresear.ch/t/minimal-vdf-randomness-beacon/3566
+
+import "github.com/starkware-libs/veedo/blob/master/contracts/BeaconContract.sol";
+
+contract Beacon{
+    function getLatestRandomness()external view returns(uint256,bytes32){}
+    
+}
+
+
 contract Randao {
+
+address public BeaconContractAddress=0x79474439753C7c70011C3b00e06e559378bAD040;
+
     struct Participant {
         uint256   secret;
         bytes32   commitment;
@@ -66,6 +79,10 @@ contract Randao {
         if (block.number >= _bnum - _commitBalkline) revert();
         _;
     }
+    
+    function setBeaconContractAddress(address _address) public  {
+        BeaconContractAddress=_address;
+    }  
 
     function newCampaign(
         uint32 _bnum,
@@ -191,24 +208,31 @@ contract Randao {
     }
 
     modifier bountyPhase(uint256 _bnum){if (block.number < _bnum) revert(); _;}
-
+    
+      
     function getRandom(uint256 _campaignID) external returns (uint256) {
         Campaign storage c = campaigns[_campaignID];
         return returnRandom(c);
     }
 
     function returnRandom(Campaign storage c) internal bountyPhase(c.bnum) returns (uint256) {
-        if (c.revealsNum == c.commitNum) {
+        if (c.revealsNum == c.commitNum ) {
             c.settled = true;
-            return c.random;
+            uint blockNumber;
+            bytes32 randomNumber;
+            Beacon beacon=Beacon(BeaconContractAddress);
+            (blockNumber,randomNumber)=beacon.getLatestRandomness();
+            return c.random + uint256(randomNumber);
         }
     }
+
 
     // The commiter get his bounty and deposit, there are three situations
     // 1. Campaign succeeds.Every revealer gets his deposit and the bounty.
     // 2. Someone revels, but some does not,Campaign fails.
     // The revealer can get the deposit and the fines are distributed.
     // 3. Nobody reveals, Campaign fails.Every commiter can get his deposit.
+    
     function getMyBounty(uint256 _campaignID) external {
         Campaign storage c = campaigns[_campaignID];
         Participant storage p = c.participants[msg.sender];

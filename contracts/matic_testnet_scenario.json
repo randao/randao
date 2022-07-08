@@ -1,0 +1,468 @@
+{
+  "accounts": {
+    "account{0}": "0x62D710F687Ea8D6048eeAc472Dd52cB4e420C247"
+  },
+  "linkReferences": {},
+  "transactions": [
+    {
+      "timestamp": 1599313171116,
+      "record": {
+        "value": "0",
+        "parameters": [],
+        "abi": "0x5429fdc28e48579bde709c0ca18c55d58f14c9438d5cd1829556be99fd68b97b",
+        "contractName": "Randao",
+        "bytecode": "6080604052600080546001600160a01b0319167379474439753c7c70011c3b00e06e559378bad04017905534801561003657600080fd5b50600380546001600160a01b03191633179055610fa1806100586000396000f3fe6080604052600436106100dd5760003560e01c806386f69ee61161007f578063ba487e6211610059578063ba487e62146102ef578063cd4b691414610333578063cfb3a4931461035d578063f2f0387714610387576100dd565b806386f69ee6146102625780638a8e5afb146102955780639348cef7146102bf576100dd565b8063384b1393116100bb578063384b1393146101c65780634d853ee5146101f757806358b1f29c1461020c57806369bcdb7d14610238576100dd565b8063141961bc146100e25780632035ecf41461016e5780632c0f7b6f1461019f575b600080fd5b3480156100ee57600080fd5b5061010c6004803603602081101561010557600080fd5b50356103aa565b6040805163ffffffff9a8b1681526001600160601b0390991660208a015261ffff97881689820152959096166060880152608087019390935290151560a086015260c0850152841660e084015292166101008201529051908190036101200190f35b34801561017a57600080fd5b50610183610423565b604080516001600160a01b039092168252519081900360200190f35b3480156101ab57600080fd5b506101b4610432565b60408051918252519081900360200190f35b6101e3600480360360208110156101dc57600080fd5b5035610438565b604080519115158252519081900360200190f35b34801561020357600080fd5b5061018361047f565b34801561021857600080fd5b506102366004803603602081101561022f57600080fd5b503561048e565b005b34801561024457600080fd5b506101b46004803603602081101561025b57600080fd5b50356104ba565b34801561026e57600080fd5b506102366004803603602081101561028557600080fd5b50356001600160a01b03166104f4565b3480156102a157600080fd5b506101b4600480360360208110156102b857600080fd5b5035610516565b3480156102cb57600080fd5b50610236600480360360408110156102e257600080fd5b508035906020013561053a565b6101b46004803603608081101561030557600080fd5b5063ffffffff813516906001600160601b036020820135169061ffff6040820135811691606001351661057d565b34801561033f57600080fd5b506101b46004803603602081101561035657600080fd5b50356107e0565b34801561036957600080fd5b506102366004803603602081101561038057600080fd5b5035610810565b6102366004803603604081101561039d57600080fd5b5080359060200135610850565b600281815481106103b757fe5b60009182526020909120600890910201805460018201546002830154600384015460049094015463ffffffff8085169650600160201b8086046001600160601b031696600160801b870461ffff90811697600160901b900416959460ff16939092808216929091041689565b6000546001600160a01b031681565b60015481565b6000806002838154811061044857fe5b60009182526020808320338452600560089093020191820190526040909120909150610475848383610885565b925050505b919050565b6003546001600160a01b031681565b60006002828154811061049d57fe5b906000526020600020906008020190506104b68161095c565b5050565b600080600283815481106104ca57fe5b60009182526020808320338452600892909202909101600601905260409020600101549392505050565b600080546001600160a01b0319166001600160a01b0392909216919091179055565b60408051602080820193909352815180820384018152908201909152805191012090565b60006002838154811061054957fe5b6000918252602080832033845260066008909302019182019052604090912090915061057784848484610a1b565b50505050565b60008483838263ffffffff16431061059457600080fd5b60008261ffff16116105a557600080fd5b60008161ffff16116105b657600080fd5b8161ffff168161ffff16106105ca57600080fd5b8161ffff16830363ffffffff1643106105e257600080fd5b866001600160601b0316600081116105f957600080fd5b600280549061060b9060018301610ef0565b945060006002868154811061061c57fe5b90600052602060002090600802019050600160008154809291906001019190505550898160000160006101000a81548163ffffffff021916908363ffffffff160217905550888160000160046101000a8154816001600160601b0302191690836001600160601b03160217905550878160000160106101000a81548161ffff021916908361ffff160217905550868160000160126101000a81548161ffff021916908361ffff1602179055503481600301819055506040518060400160405280336001600160a01b0316815260200134815250816005016000336001600160a01b03166001600160a01b0316815260200190815260200160002060008201518160000160006101000a8154816001600160a01b0302191690836001600160a01b03160217905550602082015181600101559050508963ffffffff16336001600160a01b0316877f1fec0e961ed9a5d582eb83ec0029dc7c1f0cdd44cfae6f49c8e316b8005d15168c8c8c3460405180856001600160601b03166001600160601b031681526020018461ffff1661ffff1681526020018361ffff1661ffff16815260200182815260200194505050505060405180910390a45050505050949350505050565b600080600283815481106107f057fe5b9060005260206000209060080201905061080981610b23565b9392505050565b60006002828154811061081f57fe5b6000918252602080832033845260066008909302019182019052604090912090915061084b8282610bef565b505050565b808061085b57600080fd5b60006002848154811061086a57fe5b90600052602060002090600802019050610577848483610c6b565b815460009063ffffffff811690600160901b900461ffff168082034311156108ac57600080fd5b83546001600160a01b031680156108c257600080fd5b60038601805434908101909155604080518082018252338082526020808301858152600083815260058d018352859020935184546001600160a01b0319166001600160a01b0390911617845551600193909301929092558251938452915191928a927f23dccbd65d14a6f1eca0cb7a8c085ea070cc1dc36fde87272dcd7b2e0c4748b2929181900390910190a35060019695505050505050565b805463ffffffff164381111561097157600080fd5b600482015463ffffffff80821691600160201b900416808214801561099b575063ffffffff821615155b156109a557600080fd5b3360008181526005860160205260409020546001600160a01b03169081146109cc57600080fd5b336000818152600587016020526040808220600101805490839055905190929183156108fc02918491818181858888f19350505050158015610a12573d6000803e3d6000fd5b50505050505050565b815463ffffffff811690600160901b900461ffff168082034311610a3e57600080fd5b814310610a4a57600080fd5b8483600101548082604051602001808281526020019150506040516020818303038152906040528051906020012014610a8257600080fd5b600385015460ff168015610a9557600080fd5b87865560038601805460ff1916600190811790915560048801805463ffffffff600160201b808304821685019091160267ffffffff000000001990911617905586549088018054909118905560408051898152905133918b917f9141bfaedbc77aa7b8d9c989cd81909d95bb1677e556e34cfd45e50e0bea29679181900360200190a3505050505050505050565b805460009063ffffffff1643811115610b3b57600080fd5b6004830154600160201b810463ffffffff90811691161415610be95760028301805460ff191660011790556000805460408051637a5f5ebd60e11b8152815184936001600160a01b031692839263f4bebd7a9260048083019392829003018186803b158015610ba957600080fd5b505afa158015610bbd573d6000803e3d6000fd5b505050506040513d6040811015610bd357600080fd5b50602001516001870154019450610be992505050565b50919050565b815463ffffffff1643811115610c0457600080fd5b6003820154610100900460ff168015610c1c57600080fd5b6004840154600160201b900463ffffffff1615610c5f57600383015460ff1615610c5a576000610c4b85610df3565b9050610c58818686610e62565b505b610577565b61057760008585610e62565b8054600160201b90046001600160601b0316348114610c8957600080fd5b815463ffffffff81169061ffff600160801b8204811691600160901b900416818303431015610cb757600080fd5b8061ffff168303431115610cca57600080fd5b3360009081526006860160205260409020600101548015610cea57600080fd5b600087815260078701602052604090205460ff1615610d0857600080fd5b6040805160a081018252600080825260208083018b815283850183815260608501848152608086018581523380875260068f01865288872097518855935160018881019190915592516002880155905160039096018054915115156101000261ff001997151560ff1993841617979097169690961790955560048c01805463ffffffff80821684011663ffffffff199091161790558c845260078c01835292859020805490941690921790925582518a8152925190928b927f918c00c65dd2a8dee4c6985d1d67f04aa8cd2c93e8d427d398a90444c7f7c75e92918290030190a35050505050505050565b600481015460009063ffffffff600160201b8204811691161115610e3b576004820154600160201b900463ffffffff16610e2c83610eba565b81610e3357fe5b04905061047a565b60048201546003830154600160201b90910463ffffffff169081610e5b57fe5b0492915050565b6002810183905560038101805461ff001916610100179055815460405133916001600160601b03600160201b90910416850180156108fc02916000818181858888f19350505050158015610577573d6000803e3d6000fd5b8054600482015463ffffffff600160201b808304821692821692909203166001600160601b039190920481169190910216919050565b81548183558181111561084b5760008381526020902061084b91610f699160089182028101918502015b80821115610f655780546001600160a01b031916815560006001820181905560028201805460ff19169055600382015560048101805467ffffffffffffffff19169055600801610f1a565b5090565b9056fea265627a7a723158200eb5658e8a47714717e23c03d53b42109d48e53e1cd5e1fbaeedb16f6ced4d6764736f6c63430005110032",
+        "linkReferences": {},
+        "name": "",
+        "inputs": "()",
+        "type": "constructor",
+        "from": "account{0}"
+      }
+    }
+  ],
+  "abis": {
+    "0x5429fdc28e48579bde709c0ca18c55d58f14c9438d5cd1829556be99fd68b97b": [
+      {
+        "constant": false,
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "_campaignID",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "_hs",
+            "type": "bytes32"
+          }
+        ],
+        "name": "commit",
+        "outputs": [],
+        "payable": true,
+        "stateMutability": "payable",
+        "type": "function"
+      },
+      {
+        "constant": false,
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "_campaignID",
+            "type": "uint256"
+          }
+        ],
+        "name": "follow",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "payable": true,
+        "stateMutability": "payable",
+        "type": "function"
+      },
+      {
+        "constant": false,
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "_campaignID",
+            "type": "uint256"
+          }
+        ],
+        "name": "getMyBounty",
+        "outputs": [],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "constant": false,
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "_campaignID",
+            "type": "uint256"
+          }
+        ],
+        "name": "getRandom",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "campaignID",
+            "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "uint32",
+            "name": "bnum",
+            "type": "uint32"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint96",
+            "name": "deposit",
+            "type": "uint96"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint16",
+            "name": "commitBalkline",
+            "type": "uint16"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint16",
+            "name": "commitDeadline",
+            "type": "uint16"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "bountypot",
+            "type": "uint256"
+          }
+        ],
+        "name": "LogCampaignAdded",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "CampaignId",
+            "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "commitment",
+            "type": "bytes32"
+          }
+        ],
+        "name": "LogCommit",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "CampaignId",
+            "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "bountypot",
+            "type": "uint256"
+          }
+        ],
+        "name": "LogFollow",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "CampaignId",
+            "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "secret",
+            "type": "uint256"
+          }
+        ],
+        "name": "LogReveal",
+        "type": "event"
+      },
+      {
+        "constant": false,
+        "inputs": [
+          {
+            "internalType": "uint32",
+            "name": "_bnum",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint96",
+            "name": "_deposit",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint16",
+            "name": "_commitBalkline",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "_commitDeadline",
+            "type": "uint16"
+          }
+        ],
+        "name": "newCampaign",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "_campaignID",
+            "type": "uint256"
+          }
+        ],
+        "payable": true,
+        "stateMutability": "payable",
+        "type": "function"
+      },
+      {
+        "constant": false,
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "_campaignID",
+            "type": "uint256"
+          }
+        ],
+        "name": "refundBounty",
+        "outputs": [],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "constant": false,
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "_campaignID",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "_s",
+            "type": "uint256"
+          }
+        ],
+        "name": "reveal",
+        "outputs": [],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "constant": false,
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "_address",
+            "type": "address"
+          }
+        ],
+        "name": "setBeaconContractAddress",
+        "outputs": [],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "constant": true,
+        "inputs": [],
+        "name": "BeaconContractAddress",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "constant": true,
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "name": "campaigns",
+        "outputs": [
+          {
+            "internalType": "uint32",
+            "name": "bnum",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint96",
+            "name": "deposit",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint16",
+            "name": "commitBalkline",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "commitDeadline",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint256",
+            "name": "random",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "settled",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "bountypot",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint32",
+            "name": "commitNum",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint32",
+            "name": "revealsNum",
+            "type": "uint32"
+          }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "constant": true,
+        "inputs": [],
+        "name": "founder",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "constant": true,
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "_campaignID",
+            "type": "uint256"
+          }
+        ],
+        "name": "getCommitment",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "constant": true,
+        "inputs": [],
+        "name": "numCampaigns",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "constant": true,
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "_s",
+            "type": "uint256"
+          }
+        ],
+        "name": "shaCommit",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "payable": false,
+        "stateMutability": "pure",
+        "type": "function"
+      }
+    ]
+  }
+}
