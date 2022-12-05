@@ -274,7 +274,7 @@ contract('Randao', (accounts) => {
         secret = new web3.utils.BN('131242344353464564564574574567456');
         commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
         await randao.commit(0, commitment, {from: committer1, value: deposit});
-        h.mineBlocks(5);
+        h.mineBlocks(6);
         await randao.reveal(0, secret, {from: committer1});
       });
 
@@ -293,7 +293,7 @@ contract('Randao', (accounts) => {
         secret = new web3.utils.BN('131242344353464564564574574567456');
         commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
         await randao.commit(0, commitment, {from: committer1, value: deposit});
-        h.mineBlocks(5);
+        h.mineBlocks(6);
         await randao.reveal(0, secret, {from: committer1});
         h.mineBlocks(5);
       });
@@ -320,10 +320,10 @@ contract('Randao', (accounts) => {
         secret = new web3.utils.BN('131242344353464564564574574567456');
         commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
         await randao.commit(0, commitment, {from: committer1, value: deposit});
-        h.mineBlocks(5);
+        h.mineBlocks(6);
         await randao.reveal(0, secret, {from: committer1});
         h.mineBlocks(5);
-        await randao.getRandom.call(0, {from: consumer});
+        await randao.getRandom(0, {from: consumer});
       });
 
       it('gives the bounty to committers', async () => {
