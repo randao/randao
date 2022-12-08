@@ -16,6 +16,19 @@ contract Randao {
         uint256 bountypot;
     }
 
+    struct CampaignInfo {
+        uint32    bnum;
+        uint96    deposit;
+        uint16    commitBalkline;
+        uint16    commitDeadline;
+
+        uint256   random;
+        bool      settled;
+        uint256   bountypot;
+        uint32    commitNum;
+        uint32    revealsNum;
+    }
+
     struct Campaign {
         uint32    bnum;
         uint96    deposit;
@@ -44,8 +57,6 @@ contract Randao {
     modifier notBlank(bytes32 _s) {if (_s == "") revert(); _;}
 
     modifier beBlank(bytes32 _s) {if (_s != "") revert(); _;}
-
-    modifier beFalse(bool _t) {if (_t) revert(); _;}
 
     constructor() {
         founder = msg.sender;
@@ -85,6 +96,22 @@ contract Randao {
         c.bountypot = msg.value;
         c.consumers[msg.sender] = Consumer(msg.sender, msg.value);
         emit LogCampaignAdded(_campaignID, msg.sender, _bnum, _deposit, _commitBalkline, _commitDeadline, msg.value);
+    }
+
+    function getCampaign(uint256 _campaignID) external view returns (CampaignInfo memory) {
+        Campaign storage c = campaigns[_campaignID];
+        return CampaignInfo({
+            bnum : c.bnum,
+            deposit : c.deposit,
+            commitBalkline : c.commitBalkline,
+            commitDeadline : c.commitDeadline,
+
+            random : c.random,
+            settled : c.settled,
+            bountypot : c.bountypot,
+            commitNum : c.commitNum,
+            revealsNum : c.revealsNum
+        });
     }
 
     event LogFollow(uint256 indexed CampaignId, address indexed from, uint256 bountypot);
@@ -184,8 +211,8 @@ contract Randao {
         Campaign storage c,
         Participant storage p
     ) checkRevealPhase(c.bnum, c.commitDeadline)
-        checkSecret(_s, p.commitment)
-        beFalse(p.revealed) internal {
+        checkSecret(_s, p.commitment) internal {
+        require(!p.revealed, "Already revealed secret");
         p.secret = _s;
         p.revealed = true;
         c.revealsNum++;
@@ -220,26 +247,28 @@ contract Randao {
     // 2. Someone revels, but some does not,Campaign fails.
     // The revealer can get the deposit and the fines are distributed.
     // 3. Nobody reveals, Campaign fails.Every commiter can get his deposit.
-    function getMyBounty(uint256 _campaignID) external {
+    function getMyBounty(uint256 _campaignID) external returns (uint256) {
         Campaign storage c = campaigns[_campaignID];
         Participant storage p = c.participants[msg.sender];
-        transferBounty(c, p);
+        return transferBounty(c, p);
     }
 
     function transferBounty(
         Campaign storage c,
         Participant storage p
-        ) bountyPhase(c.bnum)
-        beFalse(p.rewarded) internal {
+        ) bountyPhase(c.bnum) internal returns (uint256) {
+        require(!p.rewarded, "Bouty already claimed");
+        uint256 share = 0;
         if (c.revealsNum > 0) {
             if (p.revealed) {
-                uint256 share = calculateShare(c);
+                share = calculateShare(c);
                 returnReward(share, c, p);
             }
         // Nobody reveals
         } else if (c.commitNum > 0) {
             returnReward(0, c, p);
         }
+        return share;
     }
 
     function calculateShare(Campaign storage c) internal view returns (uint256 _share) {
