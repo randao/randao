@@ -6,6 +6,7 @@ contract('Randao', (accounts) => {
   const consumer = accounts[1];
   const follower1 = accounts[2];
   const committer1 = accounts[3];
+  console.log("accounts number : == ", accounts);
 
   let deposit = web3.utils.toWei('10', 'ether');
 
@@ -169,7 +170,7 @@ contract('Randao', (accounts) => {
         deposit = web3.utils.toWei('10', 'ether');
         await randao.newCampaign(bnum, deposit, commitBalkline, commitDeadline, {from: consumer, value: deposit});
         await randao.follow.call(0, {from: follower1, value: deposit});
-        h.mineBlocks(9);
+        await h.waitBlocks(9);
         secret = new web3.utils.BN('131242344353464564564574574567456');
       });
 
@@ -199,7 +200,7 @@ contract('Randao', (accounts) => {
       beforeEach(async () => {
         await h.setupNewCampaign(randao, consumer);
         await randao.follow.call(0, {from: follower1, value: deposit});
-        h.mineBlocks(19);
+        await h.waitBlocks(19);
         secret = new web3.utils.BN('131242344353464564564574574567456');
       });
 
@@ -217,7 +218,7 @@ contract('Randao', (accounts) => {
       beforeEach(async () => {
         await h.setupNewCampaign(randao, consumer);
         await randao.follow.call(0, {from: follower1, value: deposit});
-        h.mineBlocks(9);
+        await h.waitBlocks(9);
         secret = new web3.utils.BN('131242344353464564564574574567456');
         commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
         await randao.commit(0, commitment, {from: committer1, value: deposit});
@@ -234,11 +235,11 @@ contract('Randao', (accounts) => {
       beforeEach(async () => {
         await h.setupNewCampaign(randao, consumer);
         await randao.follow.call(0, {from: follower1, value: deposit});
-        h.mineBlocks(9);
+        await h.waitBlocks(9);
         secret = new web3.utils.BN('131242344353464564564574574567456');
         commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
         await randao.commit(0, commitment, {from: committer1, value: deposit});
-        h.mineBlocks(5);
+        await h.waitBlocks(5);
       });
 
       it('accepts a reveal', async () => {
@@ -250,11 +251,12 @@ contract('Randao', (accounts) => {
       beforeEach(async () => {
         await h.setupNewCampaign(randao, consumer);
         await randao.follow.call(0, {from: follower1, value: deposit});
-        h.mineBlocks(9);
+        await h.waitBlocks(9);
         secret = new web3.utils.BN('131242344353464564564574574567456');
         commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
         await randao.commit(0, commitment, {from: committer1, value: deposit});
-        h.mineBlocks(15);
+        //h.mineBlocks(15);
+        await h.waitBlocks(15);
       });
 
       it('does not accept reveals', async () => {
@@ -270,11 +272,11 @@ contract('Randao', (accounts) => {
       beforeEach(async () => {
         await h.setupNewCampaign(randao, consumer);
         await randao.follow.call(0, {from: follower1, value: deposit});
-        h.mineBlocks(9);
+        await h.waitBlocks(9);
         secret = new web3.utils.BN('131242344353464564564574574567456');
         commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
         await randao.commit(0, commitment, {from: committer1, value: deposit});
-        h.mineBlocks(6);
+        await h.waitBlocks(6);
         await randao.reveal(0, secret, {from: committer1});
       });
 
@@ -289,13 +291,13 @@ contract('Randao', (accounts) => {
       beforeEach(async () => {
         await h.setupNewCampaign(randao, consumer);
         await randao.follow.call(0, {from: follower1, value: deposit});
-        h.mineBlocks(9);
+        await h.waitBlocks(9);
         secret = new web3.utils.BN('131242344353464564564574574567456');
         commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
         await randao.commit(0, commitment, {from: committer1, value: deposit});
-        h.mineBlocks(6);
+        await h.waitBlocks(6);
         await randao.reveal(0, secret, {from: committer1});
-        h.mineBlocks(5);
+        await h.waitBlocks(5);
       });
 
       it('returns the random number', async () => {
@@ -304,7 +306,7 @@ contract('Randao', (accounts) => {
       });
 
       it('returns the random number after the bounty phase', async () => {
-        h.mineBlocks(15);
+        await h.waitBlocks(15);
         const random = await randao.getRandom.call(0, {from: consumer});
         assert.equal(random.toString(), secret.toString());
       });
@@ -316,13 +318,13 @@ contract('Randao', (accounts) => {
       beforeEach(async () => {
         await h.setupNewCampaign(randao, consumer);
         await randao.follow.call(0, {from: follower1, value: deposit});
-        h.mineBlocks(9);
+        await h.waitBlocks(9);
         secret = new web3.utils.BN('131242344353464564564574574567456');
         commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
         await randao.commit(0, commitment, {from: committer1, value: deposit});
-        h.mineBlocks(6);
+        await h.waitBlocks(6);
         await randao.reveal(0, secret, {from: committer1});
-        h.mineBlocks(5);
+        await h.waitBlocks(5);
         await randao.getRandom(0, {from: consumer});
       });
 
@@ -341,11 +343,11 @@ contract('Randao', (accounts) => {
       beforeEach(async () => {
         await h.setupNewCampaign(randao, consumer);
         await randao.follow.call(0, {from: follower1, value: deposit});
-        h.mineBlocks(9);
+        await h.waitBlocks(9);
         secret = new web3.utils.BN('131242344353464564564574574567456');
         commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
         await randao.commit(0, commitment, {from: committer1, value: deposit});
-        h.mineBlocks(8);
+        await h.waitBlocks(8);
       });
 
       it('refunds the consumer', async () => {
