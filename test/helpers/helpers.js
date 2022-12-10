@@ -1,3 +1,9 @@
+
+async function sleep(ms) {
+  await new Promise(resolve => setTimeout(resolve, ms));
+}
+
+
 const sendToEvm = async (evmMethod, ...params) => {
   await web3.currentProvider.send(
     {
@@ -32,6 +38,19 @@ const assertThrowsAsync = async (fn, regExp) => {
   }
 };
 
+const waitBlocks = async (cnt) => {
+  let isRunning = true;
+  const initialBlockNumber = await web3.eth.getBlockNumber() + cnt;
+  while (isRunning) {
+    await mineBlocks(1);
+    let currentBlockNumber = await web3.eth.getBlockNumber();
+    if (currentBlockNumber >= initialBlockNumber) {
+      isRunning = false;
+      return true;
+    }
+  }
+};
+
 const setupNewCampaign = async (randao, consumer) => {
   let bnum = await web3.eth.getBlock("latest");
   bnum = bnum.number + 20;
@@ -44,3 +63,4 @@ const setupNewCampaign = async (randao, consumer) => {
 exports.assertThrowsAsync = assertThrowsAsync;
 exports.mineBlocks = mineBlocks;
 exports.setupNewCampaign = setupNewCampaign;
+exports.waitBlocks = waitBlocks;
