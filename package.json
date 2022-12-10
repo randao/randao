@@ -1,0 +1,12 @@
+{
+  "name": "randao",
+  "version": "1.0.0",
+  "dependencies": {
+
+  },
+  "scripts": {
+    "build": "truffle compile",
+    "start": "mocha -r ts-node/register 'test/randao.js'",
+    "test": "truffle test --network development"
+  }
+}
