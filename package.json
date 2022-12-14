@@ -2,7 +2,7 @@
   "name": "randao",
   "version": "1.0.0",
   "dependencies": {
-
+    "solc": "^0.8.17"
   },
   "scripts": {
     "build": "truffle compile",
