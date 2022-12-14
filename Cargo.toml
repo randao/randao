@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "randao",
+]
+
+[profile.release]
+strip = "debuginfo"

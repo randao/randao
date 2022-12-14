@@ -2,7 +2,7 @@
     "chain": {
         "name": "Anvil",
         "chainId": "2153",
-        "endpoint": "https://prod-testnet.prod.findora.org:8545",
+        "endpoint": "http://dev-qa05-us-west-2-full-000-open.dev.findora.org:8545",
         "participant": "0x02a5D1F97c24dC9399A2878dc44cbDA274093B6D",
         "opts": {
             "randao": "0xA242C7682768c43B079b5B7dA09E2e7c80b1f5e2",
@@ -16,5 +16,6 @@
             "maxCampaigns": 5,
             "startBlock": 0
         }
-    }
+    },
+    "secret": "4d0ea2cf957b5e39d5195e3143f1d23f72897e20e18c64a7b25de44b8ef11311"
 }
