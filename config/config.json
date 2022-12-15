@@ -1,0 +1,20 @@
+{
+    "chain": {
+        "name": "Anvil",
+        "chainId": "2153",
+        "endpoint": "https://prod-testnet.prod.findora.org:8545",
+        "participant": "0x02a5D1F97c24dC9399A2878dc44cbDA274093B6D",
+        "opts": {
+            "randao": "0xA242C7682768c43B079b5B7dA09E2e7c80b1f5e2",
+            "gasLimit": "1000000",
+            "maxGasPrice": "100000000000",
+            "minGasReserve": "1000000000000000000",
+            "maxDeposit": 10,
+            "minRateOfReturn": 0.5,
+            "minRevealWindow": 7,
+            "maxRevealDelay": 6,
+            "maxCampaigns": 5,
+            "startBlock": 0
+        }
+    }
+}
