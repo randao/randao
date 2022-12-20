@@ -2,7 +2,7 @@
     "chain": {
         "name": "Anvil",
         "chainId": "2153",
-        "endpoint": "http://dev-qa05-us-west-2-full-000-open.dev.findora.org:8545",
+        "endpoint":"http://127.0.0.1:8545",
         "participant": "0x02a5D1F97c24dC9399A2878dc44cbDA274093B6D",
         "opts": {
             "randao": "0xA242C7682768c43B079b5B7dA09E2e7c80b1f5e2",
@@ -17,5 +17,11 @@
             "startBlock": 0
         }
     },
-    "secret": "4d0ea2cf957b5e39d5195e3143f1d23f72897e20e18c64a7b25de44b8ef11311"
+    "secret": "4d0ea2cf957b5e39d5195e3143f1d23f72897e20e18c64a7b25de44b8ef11311",
+    "secret_key": {
+        "founder_secret": "4d0ea2cf957b5e39d5195e3143f1d23f72897e20e18c64a7b25de44b8ef11311",
+        "follower_secret": "080b0ba9077f606d2a1fb1a9340e96454d17161c45c43147cb6c3d9b967e35c5",
+        "consumer_secret": "6d98a66574510aeebdcbc2c60c864ca4e3fcacd6031a16890c3d497d9099880a",
+        "committer_secret": "0a51fb2592d3439f638edb2e761e617ec3a577496dda8f5935bb6cc648c65cf9"
+    }
 }

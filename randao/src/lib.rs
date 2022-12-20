@@ -1,10 +1,12 @@
+pub mod config;
+pub mod contract;
 pub mod error;
 pub mod utils;
-pub mod config;
 
 use crate::{
+    contract::{NewCampaignData, RandaoContract},
     error::{Error, InternalError, Result},
-    utils::extract_keypair_from_config,
+    utils::{extract_keypair_from_config, handle_error},
 };
 use anyhow::bail;
 use bip0039::{Count, Language, Mnemonic};
@@ -15,8 +17,12 @@ use log::{debug, error, info, warn};
 use reqwest::{Client, Url};
 use secp256k1::SecretKey as SecretKey2;
 
+use crate::config::CampaignInfo;
+use crate::utils::extract_keypair_from_str;
+use config::Config;
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
+use std::fmt;
 use std::{
     cell::RefCell,
     error::Error as StdError,
@@ -32,8 +38,10 @@ use std::{
     time,
     time::Duration,
 };
-use config::Config;
 use tokio::{runtime::Runtime, sync::mpsc::Receiver, sync::Mutex};
+use web3::ethabi::ParamType;
+use web3::futures::Sink;
+use web3::signing::Key;
 use web3::{
     self,
     api::Eth,
@@ -41,14 +49,10 @@ use web3::{
     ethabi::{Int, Token, Uint},
     transports::Http,
     types::{
-        Address, Block, BlockId, BlockNumber, Bytes, Transaction, TransactionId, TransactionParameters,
-        TransactionReceipt, H160, H256, U128, U256, U64,
+        Address, Block, BlockId, BlockNumber, Bytes, Transaction, TransactionId,
+        TransactionParameters, TransactionReceipt, H160, H256, U128, U256, U64,
     },
 };
-use web3::signing::Key;
-use std::fmt;
-use crate::utils::extract_keypair_from_str;
-
 
 const FRC20_ADDRESS: u64 = 0x1000;
 pub const BLOCK_TIME: u64 = 16;
@@ -81,7 +85,8 @@ pub struct KeyPair {
 pub fn one_eth_key() -> KeyPair {
     let mnemonic = Mnemonic::generate_in(Language::English, Count::Words12);
     let bs = mnemonic.to_seed("");
-    let ext = XPrv::derive_from_path(&bs, &DerivationPath::from_str("m/44'/60'/0'/0/0").unwrap()).unwrap();
+    let ext = XPrv::derive_from_path(&bs, &DerivationPath::from_str("m/44'/60'/0'/0/0").unwrap())
+        .unwrap();
 
     let secret = SecretKey::parse_slice(&ext.to_bytes()).unwrap();
     let public = PublicKey::from_secret_key(&secret);
@@ -121,7 +126,8 @@ pub struct BlockClient {
     pub root_sk: secp256k1::SecretKey,
     pub root_addr: Address,
     pub overflow_flag: AtomicUsize,
-    pub config:config::Config,
+    pub config: config::Config,
+    pub randao_contract: RandaoContract,
     rt: Runtime,
 }
 
@@ -158,7 +164,8 @@ impl BlockClient {
             root_addr,
             rt,
             overflow_flag: AtomicUsize::from(0),
-            config:config.clone(),
+            randao_contract: RandaoContract::default(),
+            config: config.clone(),
         }
     }
 
@@ -202,14 +209,21 @@ impl BlockClient {
     }
 
     pub fn nonce(&self, from: Address, block: Option<BlockNumber>) -> Option<U256> {
-        self.rt.block_on(self.eth.transaction_count(from, block)).ok()
+        self.rt
+            .block_on(self.eth.transaction_count(from, block))
+            .ok()
     }
 
     pub fn pending_nonce(&self, from: Address) -> Option<U256> {
         self.pending_nonce_inner(from, Some(3), None)
     }
 
-    pub fn pending_nonce_inner(&self, from: Address, interval: Option<u64>, times: Option<u64>) -> Option<U256> {
+    pub fn pending_nonce_inner(
+        &self,
+        from: Address,
+        interval: Option<u64>,
+        times: Option<u64>,
+    ) -> Option<U256> {
         let interval = interval.unwrap_or(5);
         let mut tries = 1u64;
         loop {
@@ -234,11 +248,15 @@ impl BlockClient {
 
     #[allow(unused)]
     pub fn transaction(&self, id: TransactionId) -> Option<Transaction> {
-        self.rt.block_on(self.eth.transaction(id)).unwrap_or_default()
+        self.rt
+            .block_on(self.eth.transaction(id))
+            .unwrap_or_default()
     }
 
     pub fn transaction_receipt(&self, hash: H256) -> Option<TransactionReceipt> {
-        self.rt.block_on(self.eth.transaction_receipt(hash)).unwrap_or_default()
+        self.rt
+            .block_on(self.eth.transaction_receipt(hash))
+            .unwrap_or_default()
     }
 
     #[allow(unused)]
@@ -247,10 +265,17 @@ impl BlockClient {
     }
 
     pub fn balance(&self, address: Address, number: Option<BlockNumber>) -> U256 {
-        self.rt.block_on(self.eth.balance(address, number)).unwrap_or_default()
+        self.rt
+            .block_on(self.eth.balance(address, number))
+            .unwrap_or_default()
     }
 
-    pub fn wait_for_tx_receipt(&self, hash: H256, interval: Duration, times: u64) -> (u64, Option<TransactionReceipt>) {
+    pub fn wait_for_tx_receipt(
+        &self,
+        hash: H256,
+        interval: Duration,
+        times: u64,
+    ) -> (u64, Option<TransactionReceipt>) {
         let mut wait = 0;
         let mut retry = times;
         loop {
@@ -282,11 +307,11 @@ impl BlockClient {
             Some(e) => {
                 let err_str = e.to_string();
                 if err_str.contains("broadcast_tx_sync") {
-                    Error::SyncTx
+                    Error::GetNumCampaignsErr
                 } else if err_str.contains("Transaction check error") {
-                    Error::CheckTx
+                    Error::CheckChainErr
                 } else if err_str.contains("error sending request") {
-                    Error::SendErr
+                    Error::CheckCampaignsInfoErr
                 } else if err_str.contains("InternalError") {
                     if err_str.contains("InvalidNonce") {
                         Error::TxInternalErr(InternalError::InvalidNonce(err_str))
@@ -317,17 +342,20 @@ impl BlockClient {
                 let eth = (*self.eth.clone()).clone();
 
                 let f = move || async move {
-                    let succeed =
-                        match contract_deploy(eth, &sec_key, &code_path, &abi_path, gas, gas_price, args).await {
-                            Ok(v) => {
-                                println!("contract address: {:?}", v);
-                                true
-                            }
-                            Err(e) => {
-                                println!("deploy contract failed: {:?}", e);
-                                false
-                            }
-                        };
+                    let succeed = match contract_deploy(
+                        eth, &sec_key, &code_path, &abi_path, gas, gas_price, args,
+                    )
+                    .await
+                    {
+                        Ok(v) => {
+                            println!("contract address: {:?}", v);
+                            true
+                        }
+                        Err(e) => {
+                            println!("deploy contract failed: {:?}", e);
+                            false
+                        }
+                    };
                     if !succeed {
                         println!("deploy failed");
                     }
@@ -356,91 +384,296 @@ impl BlockClient {
         Ok(())
     }
 
-    pub fn contract_call(&self, call_json: CallJson) -> anyhow::Result<()> {
+    pub fn contract_call(&self, call_obj: CallJsonObj) -> anyhow::Result<()> {
         self.rt.block_on(async {
-            let mut vf = Vec::new();
-            for call_obj in call_json.call_obj {
-                let CallJsonObj {
-                    contract_addr,
-                    abi_path,
-                    sec_key,
-                    gas,
-                    gas_price,
-                    func_name,
-                    args,
-                } = call_obj;
-                let args = parse_args_csv(&args)?;
-                let eth = (*self.eth.clone()).clone();
+            let CallJsonObj {
+                contract_addr,
+                abi_path,
+                sec_key,
+                gas,
+                gas_price,
+                func_name,
+                args,
+            } = call_obj;
+            let args = parse_args_csv(&args)?;
+            let eth = (*self.eth.clone()).clone();
+            let result = contract_call(
+                eth,
+                &contract_addr,
+                &sec_key,
+                &abi_path,
+                gas,
+                gas_price,
+                &func_name,
+                args,
+            )
+            .await;
 
-                let f = move || async move {
-                    let succeed = match contract_call(
-                        eth,
-                        &sec_key,
-                        &contract_addr,
-                        &abi_path,
-                        gas,
-                        gas_price,
-                        &func_name,
-                        args,
-                    )
-                    .await
-                    {
-                        Ok(v) => {
-                            log::info!("transaction hash: {:?}", v);
-                            true
-                        }
-                        Err(e) => {
-                            log::info!("call contract failed: {:?}", e);
-                            false
-                        }
-                    };
-                    if !succeed {
-                        bail!("call failed");
-                    }
-                    Ok(())
-                };
-
-                vf.push(f);
-            }
-
-            let (success_task, total_times) = multi_tasks_impl(vf).await?;
-
-            log::info!(
-                "success task: {} total times: {} average time: {}",
-                success_task,
-                total_times,
-                if success_task == 0 {
-                    0
-                } else {
-                    total_times / success_task as u128
+            match result {
+                Ok(v) => {
+                    println!("transaction hash: {:?}", v);
+                    true
                 }
-            );
+                Err(e) => {
+                    println!("call contract failed: {:?}", e);
+                    false
+                }
+            };
+            anyhow::Ok(())
+        })?;
+        Ok(())
+    }
 
+    pub fn contract_query(&self, query_json: QueryJson) -> anyhow::Result<()> {
+        use ethabi::Error as EthError;
+
+        self.rt.block_on(async {
+            let QueryJson {
+                sec_key,
+                contract_addr,
+                abi_path,
+                func_name,
+                args,
+            } = query_json;
+
+            let args = parse_args_csv(&args)?;
+            let (root_sk, root_addr) = extract_keypair_from_str(sec_key.to_string());
+            let eth = (*self.eth.clone()).clone();
+            let account = format!("0x{:x}", root_addr);
+            let result =
+                contract_query(eth, &contract_addr, &account, &abi_path, &func_name, args).await?;
+            println!("query result: {:?}", result);
             anyhow::Ok(())
         })?;
 
         Ok(())
     }
 
-    pub fn contract_query(&self, query_json: QueryJson) -> anyhow::Result<()> {
+    pub fn contract_setup(
+        &mut self,
+        sec_key: &str,
+        contract_addr: &str,
+        abi_path: &str,
+        gas: u32,
+        gas_price: u128,
+    ) {
+        self.randao_contract = RandaoContract {
+            sec_key: sec_key.to_string(),
+            contract_addr: contract_addr.to_string(),
+            abi_path: abi_path.to_string(),
+            gas: gas,
+            gas_price: gas_price,
+        };
+    }
+
+    pub fn contract_new_campaign(
+        &self,
+        gas: u32,
+        gas_price: u128,
+        campaign_data: NewCampaignData,
+    ) -> Option<TransactionReceipt> {
         self.rt.block_on(async {
-            let QueryJson {
-                contract_addr,
-                abi_path,
-                func_name,
-                args,
-            } = query_json;
-            let args = parse_args_csv(&args)?;
-
             let eth = (*self.eth.clone()).clone();
-            let result = contract_query(eth, &contract_addr, &abi_path, &func_name, args).await?;
+            let result = self
+                .randao_contract
+                .new_campaign(eth, gas, gas_price, campaign_data)
+                .await;
+            let value = match result {
+                Ok(v) => Some(v),
+                Err(e) => {
+                    println!("call contract_new_campaign failed: {:?}", e);
+                    None
+                }
+            };
+            value
+        })
+    }
 
-            log::info!("query result: {:?}", result);
+    pub fn contract_follow(
+        &self,
+        gas: u32,
+        gas_price: u128,
+        campaign_id: u128,
+        deposit: u128,
+        follow_sec_key: &str,
+    ) -> Option<TransactionReceipt> {
+        self.rt.block_on(async {
+            let eth = (*self.eth.clone()).clone();
+            let result = self
+                .randao_contract
+                .follow(eth, gas, gas_price, campaign_id, deposit, follow_sec_key)
+                .await;
+            let value = match result {
+                Ok(v) => Some(v),
+                Err(e) => None,
+            };
+            value
+        })
+    }
 
-            anyhow::Ok(())
-        })?;
+    pub fn gas_new_campaign(
+        &self,
+        gas: u32,
+        gas_price: u128,
+        campaign_data: NewCampaignData,
+    ) -> Option<U256> {
+        self.rt.block_on(async {
+            let eth = (*self.eth.clone()).clone();
+            let result = self
+                .randao_contract
+                .gas_new_campaign(eth, gas, gas_price, campaign_data)
+                .await;
+            let value = match result {
+                Ok(v) => {
+                    println!("gas_new_campaign hash: {:?}", v);
+                    Some(v)
+                }
+                Err(e) => {
+                    println!("call gas_new_campaign failed: {:?}", e);
+                    None
+                }
+            };
+            value
+        })
+    }
 
-        Ok(())
+    pub fn contract_get_campaign_info(
+        &self,
+        campaign_id: u128,
+    ) -> Option<CampaignInfo> {
+        self.rt
+            .block_on(async {
+                let eth = (*self.eth.clone()).clone();
+                let sec = self.config.secret.as_str();
+                self.randao_contract
+                    .get_campaign_info(eth, campaign_id, sec)
+                    .await
+            })
+            .ok()
+    }
+
+    pub fn contract_campaign_num(&self) -> Option<U256> {
+        self.rt.block_on(async {
+            let eth = (*self.eth.clone()).clone();
+            let result = self.randao_contract.campaign_num(eth).await;
+            let value = match result {
+                Ok(v) => Some(v),
+                Err(e) => {
+                    println!("call contract failed: {:?}", e);
+                    None
+                }
+            };
+            value
+        })
+    }
+
+    pub fn contract_sha_commit(&self, _s: &str) -> Option<Vec<u8>> {
+        self.rt.block_on(async {
+            let eth = (*self.eth.clone()).clone();
+            let result = self.randao_contract.sha_commit(eth, _s).await;
+            let value = match result {
+                Ok(v) => Some(v),
+                Err(e) => {
+                    println!("call contract_sha_commit failed: {:?}", e);
+                    None
+                }
+            };
+            value
+        })
+    }
+
+    pub fn contract_commit(
+        &self,
+        campaign_id: u128,
+        deposit: u128,
+        commit_sec_key: &str,
+        _hs: Vec<u8>,
+    ) -> Option<TransactionReceipt> {
+        self.rt.block_on(async {
+            let eth = (*self.eth.clone()).clone();
+            let result = self
+                .randao_contract
+                .commit(eth, campaign_id, deposit, commit_sec_key, _hs)
+                .await;
+            let value = match result {
+                Ok(v) => {
+                    if v.status.unwrap() == U64::zero() {
+                        println!("commit receipt:{:?}", v);
+                    }
+                    Some(v)
+                }
+                Err(e) => {
+                    println!("call contract_commit failed: {:?}", e);
+                    None
+                }
+            };
+            value
+        })
+    }
+
+    pub fn contract_reveal(
+        &self,
+        campaign_id: u128,
+        deposit: u128,
+        commit_sec_key: &str,
+        _s: &str,
+    ) -> Option<TransactionReceipt> {
+        self.rt.block_on(async {
+            let eth = (*self.eth.clone()).clone();
+            let result = self
+                .randao_contract
+                .reveal(eth, campaign_id, commit_sec_key, _s)
+                .await;
+            let value = match result {
+                Ok(v) => {
+                    if v.status.unwrap() == U64::zero() {
+                        println!("reveal receipt:{:?}", v);
+                    }
+                    Some(v)
+                }
+                Err(e) => {
+                    println!("call contract_reveal failed: {:?}", e);
+                    None
+                }
+            };
+            value
+        })
+    }
+
+    pub fn contract_get_my_bounty(&self, campaign_id: u128, commit_sec_key: &str) -> Option<U256> {
+        self.rt.block_on(async {
+            let eth = (*self.eth.clone()).clone();
+            let result = self
+                .randao_contract
+                .get_campaign_query(eth, "getMyBounty", campaign_id, commit_sec_key)
+                .await;
+            let value = match result {
+                Ok(v) => Some(v),
+                Err(e) => {
+                    println!("call contract_get_my_bounty failed: {:?}", e);
+                    None
+                }
+            };
+            value
+        })
+    }
+
+    pub fn contract_get_random(&self, campaign_id: u128, commit_sec_key: &str) -> Option<U256> {
+        self.rt.block_on(async {
+            let eth = (*self.eth.clone()).clone();
+            let result = self
+                .randao_contract
+                .get_campaign_query(eth, "getRandom", campaign_id, commit_sec_key)
+                .await;
+            let value = match result {
+                Ok(v) => Some(v),
+                Err(e) => {
+                    println!("call contract_reveal failed: {:?}", e);
+                    None
+                }
+            };
+            value
+        })
     }
 }
 
@@ -476,6 +709,7 @@ pub struct CallJson {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct QueryJson {
+    pub sec_key: String,
     pub contract_addr: String,
     pub abi_path: String,
     pub func_name: String,
@@ -515,10 +749,10 @@ fn parse_args_csv(args: &str) -> anyhow::Result<Vec<Token>> {
                 bail!("arg format error!!!");
             } else if let Ok(arg_bool) = arg.parse::<bool>() {
                 res.push(arg_bool.into_token());
+            } else if let Ok(arg_uint) = arg.parse::<Uint>() {
+                res.push(Token::Uint(arg_uint));
             } else if let Ok(arg_int) = arg.parse::<Int>() {
                 res.push(arg_int.into_token());
-            } else if let Ok(arg_uint) = arg.parse::<Uint>() {
-                res.push(arg_uint.into_token());
             } else if let Ok(arg_address) = arg.parse::<Address>() {
                 res.push(arg_address.into_token());
             } else if let Ok(arg_h160) = arg.parse::<H160>() {
@@ -563,7 +797,12 @@ async fn contract_deploy(
                 opt.gas_price = Some(gas_price.into());
                 // opt.nonce = Some(nonce + nonce_add);
             }))
-            .sign_with_key_and_execute(std::str::from_utf8(&byetcode).unwrap(), (), &secretkey, Some(1111))
+            .sign_with_key_and_execute(
+                std::str::from_utf8(&byetcode).unwrap(),
+                (),
+                &secretkey,
+                Some(2153),
+            )
             .await?
     } else {
         Contract::deploy(eth, &abi)?
@@ -574,7 +813,12 @@ async fn contract_deploy(
                 opt.gas_price = Some(gas_price.into());
                 // opt.nonce = Some(nonce + nonce_add);
             }))
-            .sign_with_key_and_execute(std::str::from_utf8(&byetcode).unwrap(), args, &secretkey, None)
+            .sign_with_key_and_execute(
+                std::str::from_utf8(&byetcode).unwrap(),
+                args,
+                &secretkey,
+                None,
+            )
             .await?
     };
 
@@ -608,7 +852,9 @@ async fn contract_call(
     let transaction_hash = if args.is_empty() {
         contract.signed_call(func_name, (), opt, &secretkey).await?
     } else {
-        contract.signed_call(func_name, args, opt, &secretkey).await?
+        contract
+            .signed_call(func_name, args, opt, &secretkey)
+            .await?
     };
 
     Ok(transaction_hash)
@@ -617,26 +863,34 @@ async fn contract_call(
 async fn contract_query(
     eth: Eth<Http>,
     contr_addr: &str,
-    // _account: &str,
+    account: &str,
     abi_path: &str,
     func_name: &str,
     args: Vec<Token>,
-) -> web3::contract::Result<U256> {
+) -> web3::contract::Result<U128> {
     let abi = fs::read(abi_path).unwrap();
     let contr_addr: H160 = contr_addr.parse().unwrap();
-    // let _account: H160 = _account.parse().unwrap();
+    let _account: H160 = account.parse().unwrap();
 
     let contract = Contract::from_json(eth, contr_addr, &abi)?;
     // let _secretkey = SecretKey::from_str(_sec_key).unwrap();
     let opt = Options::default();
 
-    let result = if args.is_empty() {
-        contract.query(func_name, (), None, opt, None).await?
+    let id = 3;
+    let token_id: U256 = id.into();
+    let result: U128 = if args.is_empty() {
+        contract.query(func_name, (), _account, opt, None).await?
     } else {
-        contract.query(func_name, args, None, opt, None).await?
+        contract
+            .query(func_name, token_id, _account, opt, None)
+            .await?
     };
 
-    Ok(result)
+    println!("result:{:?}", result);
+    let mut ret = [0; 2];
+    ret[0] = 0;
+    ret[1] = 0;
+    Ok(U128(ret))
 }
 
 async fn multi_tasks_impl<F, T>(vf: Vec<F>) -> anyhow::Result<(u32, u128)>
@@ -706,11 +960,21 @@ async fn max_tasks_update(mut rx: Receiver<()>) {
                     MAX_TASKS.store(MAX_TASKS.load(Ordering::Acquire) - 1, Ordering::Release);
                 }
                 std::cmp::Ordering::Equal => {
-                    let end_cost_time2 = average_time_queue.iter().rev().skip(1).rev().last().unwrap();
+                    let end_cost_time2 = average_time_queue
+                        .iter()
+                        .rev()
+                        .skip(1)
+                        .rev()
+                        .last()
+                        .unwrap();
 
-                    if end_cost_time > end_cost_time2 && end_cost_time - end_cost_time2 > DELTA_RANGE {
+                    if end_cost_time > end_cost_time2
+                        && end_cost_time - end_cost_time2 > DELTA_RANGE
+                    {
                         MAX_TASKS.store(2 * MAX_TASKS.load(Ordering::Acquire), Ordering::Release);
-                    } else if end_cost_time < end_cost_time2 && end_cost_time2 - end_cost_time > DELTA_RANGE {
+                    } else if end_cost_time < end_cost_time2
+                        && end_cost_time2 - end_cost_time > DELTA_RANGE
+                    {
                         MAX_TASKS.store(MAX_TASKS.load(Ordering::Acquire) - 1, Ordering::Release);
                     }
                 }
