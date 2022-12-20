@@ -6,7 +6,6 @@
   },
   "scripts": {
     "build": "truffle compile",
-    "start": "mocha -r ts-node/register 'test/randao.js'",
     "test": "truffle test --network development"
   }
 }

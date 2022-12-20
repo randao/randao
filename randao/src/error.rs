@@ -4,9 +4,9 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug)]
 pub enum Error {
-    CheckTx,
-    SyncTx,
-    SendErr,
+    CheckChainErr,
+    GetNumCampaignsErr,
+    CheckCampaignsInfoErr,
     TxInternalErr(InternalError),
     Io(std::io::Error),
     Db(redis::RedisError),
@@ -23,9 +23,9 @@ pub enum InternalError {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Error::CheckTx => write!(f, "tx check failed"),
-            Error::SyncTx => write!(f, "tx not accepted by tendermint"),
-            Error::SendErr => write!(f, "tx not sent"),
+            Error::CheckChainErr => write!(f, "chain id check failed"),
+            Error::GetNumCampaignsErr => write!(f, "Get numCampaigns faild"),
+            Error::CheckCampaignsInfoErr => write!(f, "Check campaigns info faild"),
             Error::TxInternalErr(e) => write!(f, "Internal Error:: {:?}", e),
             Error::Io(e) => write!(f, "Io error {:?}", e),
             Error::Db(e) => write!(f, "Database error {:?}", e),
@@ -38,21 +38,7 @@ impl std::fmt::Display for Error {
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Error::Io(e) => Some(e),
-            Error::Db(e) => Some(e),
             _ => None,
         }
-    }
-}
-
-impl From<std::io::Error> for Error {
-    fn from(e: std::io::Error) -> Self {
-        Self::Io(e)
-    }
-}
-
-impl From<redis::RedisError> for Error {
-    fn from(e: redis::RedisError) -> Self {
-        Self::Db(e)
     }
 }

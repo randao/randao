@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-web3 = { git = "https://github.com/simonjiao/rust-web3.git", branch = "findora" }
+web3  = "0.18.0"
 tokio = { version = "1.14" }
 secp256k1 = { version = "0.21", features = ["recovery"]}
 bip0039 = "0.10.1"
@@ -30,3 +30,4 @@ derive_more = "0.99.17"
 anyhow = "1.0.44"
 csv = "1.1.6"
 lazy_static = "1.4.0"
+ethabi="18.0.0"
