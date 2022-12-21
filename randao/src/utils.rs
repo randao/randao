@@ -6,8 +6,8 @@ use std::thread::sleep;
 use std::time::Duration;
 use url::Url;
 use web3::contract::Error;
-use web3::types::{Address, H256};
 use web3::types::BlockNumber::Number;
+use web3::types::{Address, H256};
 
 pub fn log_cpus() -> u64 {
     num_cpus::get() as u64
@@ -116,22 +116,27 @@ pub fn wait_blocks(client: &BlockClient) {
     }
 }
 
-pub fn check_campaign_info(client:&BlockClient,  campaign_info: &CampaignInfo, config: &Config) -> bool{
+pub fn check_campaign_info(
+    client: &BlockClient,
+    campaign_info: &CampaignInfo,
+    config: &Config,
+) -> bool {
     let block_number = client.block_number().unwrap();
     let (root_sk, root_addr) = extract_keypair_from_str(client.config.secret.clone());
-    let balance =  client.balance(root_addr, Some(Number(block_number)));
+    let balance = client.balance(root_addr, Some(Number(block_number)));
     if U256::from_str(config.chain.opts.minGasReserve.as_str()).unwrap() >= balance {
-       return  false;
+        return false;
     }
 
-    let mut num  = (campaign_info.bountypot.as_u128()/ (campaign_info.deposit.as_u128()/(campaign_info.commitNum.as_u128() + 1)));
+    let mut num = (campaign_info.bountypot.as_u128()
+        / (campaign_info.deposit.as_u128() / (campaign_info.commitNum.as_u128() + 1)));
     if config.chain.opts.maxDeposit > i32::try_from(campaign_info.deposit).unwrap()
         && config.chain.opts.minRateOfReturn <= num as f32
         && campaign_info.bnum - campaign_info.commitBalkline > U256::from(block_number.as_u64())
         && campaign_info.commitDeadline > U256::from(config.chain.opts.minRevealWindow)
-        && config.chain.opts.minRevealWindow >config.chain.opts.maxRevealDelay
+        && config.chain.opts.minRevealWindow > config.chain.opts.maxRevealDelay
     {
-       return  true;
+        return true;
     }
     false
 }

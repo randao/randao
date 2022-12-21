@@ -14,6 +14,7 @@ use bip32::{DerivationPath, XPrv};
 use lazy_static::lazy_static;
 use libsecp256k1::{PublicKey, SecretKey};
 use log::{debug, error, info, warn};
+use rand::Rng;
 use reqwest::{Client, Url};
 use secp256k1::SecretKey as SecretKey2;
 
@@ -537,10 +538,7 @@ impl BlockClient {
         })
     }
 
-    pub fn contract_get_campaign_info(
-        &self,
-        campaign_id: u128,
-    ) -> Option<CampaignInfo> {
+    pub fn contract_get_campaign_info(&self, campaign_id: u128) -> Option<CampaignInfo> {
         self.rt
             .block_on(async {
                 let eth = (*self.eth.clone()).clone();
@@ -1007,5 +1005,157 @@ fn get_timestamp() -> u128 {
     match SystemTime::now().duration_since(UNIX_EPOCH) {
         Ok(n) => n.as_millis(),
         Err(_) => panic!("SystemTime before UNIX EPOCH!"),
+    }
+}
+
+pub struct WorkThd {
+    cli: BlockClient,
+    campaign_id: u128,
+    campaign_info: CampaignInfo,
+    cfg: Config,
+}
+
+impl WorkThd {
+    pub fn new(
+        cli: BlockClient,
+        campaign_id: u128,
+        campaign_info: CampaignInfo,
+        cfg: Config,
+    ) -> WorkThd {
+        // 1)
+        WorkThd {
+            cli: cli,
+            campaign_id: campaign_id,
+            campaign_info: campaign_info,
+            cfg: cfg,
+        }
+    }
+
+    pub fn do_task(&self) -> anyhow::Result<U256> {
+        // 2)
+        let mut rng = rand::thread_rng();
+        let mut _s = rng.gen::<u128>().to_string();
+        _s.push_str(&rng.gen::<u128>().to_string());
+
+        let hs = self
+            .cli
+            .contract_sha_commit(_s.as_str())
+            .ok_or(anyhow::format_err!("sha_commit err"))
+            .and_then(|v| {
+                info!(
+                    "sha_commit succeed, campaignID={:?}, hs={:?}",
+                    self.campaign_id, v
+                );
+                Ok(v)
+            })
+            .or_else(|e| {
+                error!(
+                    "sha_commit failed, campaignID={:?}, err={:?}",
+                    self.campaign_id,
+                    e.to_string()
+                );
+                Err(e)
+            })?;
+
+        let commit_tx_receipt = self
+            .cli
+            .contract_commit(
+                self.campaign_id,
+                self.campaign_info.deposit.as_u128(),
+                &self.cfg.secret_key.consumer_secret,
+                hs,
+            )
+            .ok_or(anyhow::format_err!("commit err"))
+            .and_then(|v| {
+                info!(
+                    "Commit succeed, campaignID={:?}, tx={:?} gasPrice={:?}",
+                    self.campaign_id, v.transaction_hash, v.gas_used
+                );
+                Ok(v)
+            })
+            .or_else(|e| {
+                error!(
+                    "Commit failed, campaignID={:?}, err={:?}",
+                    self.campaign_id,
+                    e.to_string()
+                );
+                Err(e)
+            })?;
+        info!("commit transaction receipt :{:?}", commit_tx_receipt);
+
+        // 3)
+        utils::wait_blocks(&self.cli);
+        let reveal_tx_receipt = self
+            .cli
+            .contract_reveal(
+                self.campaign_id,
+                self.campaign_info.deposit.as_u128(),
+                &self.cfg.secret_key.consumer_secret,
+                _s.as_str(),
+            )
+            .ok_or(anyhow::format_err!("reveal err"))
+            .and_then(|v| {
+                info!(
+                    "Reveal succeed, campaignID={:?}, tx={:?} gasPrice={:?}",
+                    self.campaign_id, v.transaction_hash, v.gas_used
+                );
+                Ok(v)
+            })
+            .or_else(|e| {
+                error!(
+                    "Reveal failed, fines={:?}, campaignID={:?}, err={:?}",
+                    self.campaign_id,
+                    3,
+                    e.to_string()
+                );
+                Err(e)
+            })?;
+        info!("reveal transaction receipt :{:?}", reveal_tx_receipt);
+
+        // 4)
+        utils::wait_blocks(&self.cli);
+        let randao_num = self
+            .cli
+            .contract_get_random(self.campaign_id, &self.cfg.secret_key.consumer_secret)
+            .ok_or(anyhow::format_err!("get_random err"))
+            .and_then(|v| {
+                info!(
+                    "get Random succeed, campaignID={:?}, randao num={:?}",
+                    self.campaign_id, v
+                );
+                Ok(v)
+            })
+            .or_else(|e| {
+                error!(
+                    "get Random failed, campaignID={:?}, err={:?}",
+                    self.campaign_id,
+                    e.to_string()
+                );
+                Err(e)
+            })?;
+        info!("randao_num :{:?}", randao_num);
+
+        let my_bounty = self
+            .cli
+            .contract_get_my_bounty(self.campaign_id, &self.cfg.secret_key.consumer_secret)
+            .ok_or(anyhow::format_err!("get_my_bounty err"))
+            .and_then(|v| {
+                info!(
+                    "Bounty claimed, campaignID={:?}, bounty={:?}",
+                    self.campaign_id, v
+                );
+                Ok(v)
+            })
+            .or_else(|e| {
+                error!(
+                    "Get bounty failed, campaignID={:?}, err={:?}",
+                    self.campaign_id,
+                    e.to_string()
+                );
+                Err(e)
+            })?;
+        info!("my_bounty :{:?}", my_bounty);
+
+        Ok(my_bounty)
     }
 }
