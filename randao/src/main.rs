@@ -2,11 +2,13 @@
 extern crate serde;
 
 mod config;
+use randao::WorkThd;
 use std::borrow::Borrow;
 use tokio::time::timeout;
 mod commands;
 mod contract;
 
+use std::thread::sleep;
 use std::{
     cell::RefCell,
     cmp::Ordering,
@@ -20,7 +22,6 @@ use std::{
     thread,
     time::Duration,
 };
-use std::thread::sleep;
 
 use clap::Parser;
 use commands::*;
@@ -31,8 +32,8 @@ use randao::{
     KeyPair, QueryJson,
 };
 use rayon::prelude::*;
-use web3::types::{Address, Block, BlockId, BlockNumber, TransactionId, H256, U256, U64};
 use web3::types::BlockNumber::Number;
+use web3::types::{Address, Block, BlockId, BlockNumber, TransactionId, H256, U256, U64};
 
 fn main() -> std::io::Result<()> {
     let opt = Opts::parse();
@@ -62,7 +63,6 @@ fn main() -> std::io::Result<()> {
         }
     });
     run_main(&client);
-
 
     loop {
         let chain_id = client.chain_id();
@@ -108,33 +108,31 @@ fn run_main(client: &BlockClient) -> Result<U256, Error> {
         None => {
             return Err(Error::GetNumCampaignsErr);
         }
-        Some(num) => {
-            num
-        }
+        Some(num) => num,
     };
-    info!("chain_name:{:?}, chain_id:{:?}, block_num, endpoind:{:?}, campaigns_num:{:?}, randao:{:?}",
-             client.config.chain.name, chain_id,client.config.chain.endpoint, block.number, client.config.chain.opts.randao
-            );
+    info!(
+        "chain_name:{:?}, chain_id:{:?}, block_num, endpoind:{:?}, campaigns_num:{:?}, randao:{:?}",
+        client.config.chain.name,
+        chain_id,
+        client.config.chain.endpoint,
+        block.number,
+        client.config.chain.opts.randao
+    );
 
     loop {
         let new_campaign_num = match client.contract_campaign_num() {
             None => {
                 return Err(Error::GetNumCampaignsErr);
             }
-            Some(num) => {
-                num
-            }
+            Some(num) => num,
         };
-        if new_campaign_num > campaign_num
-        {
+        if new_campaign_num > campaign_num {
             let campaign_id = new_campaign_num.as_u128() - 1;
             let info = client.contract_get_campaign_info(campaign_id).unwrap();
-            if client.config.chain.opts.maxCampaigns <= i32::try_from(new_campaign_num).unwrap()
-            {
+            if client.config.chain.opts.maxCampaigns <= i32::try_from(new_campaign_num).unwrap() {
                 return Err(Error::GetNumCampaignsErr);
             }
-            if !check_campaign_info(client, &info, &client.config)
-            {
+            if !check_campaign_info(client, &info, &client.config) {
                 return Err(Error::CheckCampaignsInfoErr);
             }
 
@@ -142,7 +140,6 @@ fn run_main(client: &BlockClient) -> Result<U256, Error> {
         }
         sleep(Duration::from_millis(500));
     }
-
 
     return Ok(U256::from(1));
 }
@@ -190,9 +187,7 @@ fn test_contract_new_campaign() {
         wait_blocks(&client);
     }
     client.contract_reveal(campaign, deposit, &config.secret_key.consumer_secret, _s);
-    let info = client
-        .contract_get_campaign_info(campaign)
-        .unwrap();
+    let info = client.contract_get_campaign_info(campaign).unwrap();
     println!("campaign info :{:?}", info);
     for i in 0..1 {
         wait_blocks(&client);
@@ -205,4 +200,7 @@ fn test_contract_new_campaign() {
         .contract_get_my_bounty(campaign, &config.secret_key.consumer_secret)
         .unwrap();
     println!("my_bounty :{:?}", my_bounty);
+
+    let work_thd = WorkThd::new(client, campaign, info, config);
+    work_thd.do_task().unwrap();
 }
