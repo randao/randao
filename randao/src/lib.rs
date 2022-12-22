@@ -43,6 +43,7 @@ use tokio::{runtime::Runtime, sync::mpsc::Receiver, sync::Mutex};
 use web3::ethabi::ParamType;
 use web3::futures::Sink;
 use web3::signing::Key;
+use web3::types::BlockNumber::Number;
 use web3::{
     self,
     api::Eth,
@@ -1039,7 +1040,11 @@ impl WorkThd {
         }
     }
 
-    pub fn do_task(&self) -> anyhow::Result<U256> {
+    pub fn do_task(&self) -> anyhow::Result<(u128, U256, U256)> {
+        let block_number = self.cli.block_number().unwrap();
+        let (_, root_addr) = extract_keypair_from_str(self.cli.config.root_secret.clone());
+        let balance = self.cli.balance(root_addr, Some(Number(block_number)));
+
         // 2)
         let mut rng = rand::thread_rng();
         let mut _s = rng.gen::<u128>().to_string();
@@ -1164,6 +1169,10 @@ impl WorkThd {
             })?;
         info!("my_bounty :{:?}", my_bounty);
 
-        Ok(my_bounty)
+        if my_bounty <= balance {
+            anyhow::bail!("my_bounty less than balance")
+        }
+
+        Ok((self.campaign_id, randao_num, my_bounty))
     }
 }

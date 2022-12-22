@@ -189,5 +189,10 @@ fn test_contract_new_campaign() {
     println!("my_bounty :{:?}", my_bounty);
 
     let work_thd = WorkThd::new(&client, campaign, info, config);
-    work_thd.do_task().unwrap();
+    let (campaign_id, randao_num, my_bounty) = work_thd.do_task().unwrap();
+
+    println!(
+        "campaign_id: {:?} randao_num: {:?} my_bounty :{:?}",
+        campaign_id, randao_num, my_bounty
+    );
 }
