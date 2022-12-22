@@ -23,6 +23,8 @@ use std::{
     time::Duration,
 };
 
+use std::process;
+use std::sync::atomic::{AtomicBool, Ordering as Order};
 use clap::Parser;
 use commands::*;
 use log::{debug, error, info};
@@ -35,72 +37,29 @@ use rayon::prelude::*;
 use web3::types::BlockNumber::Number;
 use web3::types::{Address, Block, BlockId, BlockNumber, TransactionId, H256, U256, U64};
 
-fn main() -> std::io::Result<()> {
+fn main() {
+
+    match run_main() {
+        Ok(_) => {
+        }
+        Err(error) => {
+            let e = format!("main thread err:{:?}", error);
+            error!("{}",e);
+        }
+    }
+    process::exit(0);
+    //test_contract_new_campaign();
+}
+fn run_main() -> Result<U256, Error> {
+    let stop = Arc::new(AtomicBool::new(false));
     let opt = Opts::parse();
     let config: Config = Config::parse_from_file(&opt.config);
     let mut client = BlockClient::setup(&config, None);
-    /*let DeployJsonObj = DeployJsonObj{
-        code_path : "Randao_sol_Randao.bin".to_string(),
-        abi_path: "Randao_sol_Randao.abi".to_string(),
-        sec_key : config.secret.clone(),
-        gas:1000000,
-        gas_price:10000000000,
-        args: "".to_string(),
-    };
-    let obj_vec = vec![DeployJsonObj];
-
-    let ob_json  = DeployJson{
-        deploy_obj:obj_vec,
-    };
-    let result= client.contract_deploy(ob_json);*/
-
-    let (tx, rx) = std::sync::mpsc::channel();
-    let child_thread = thread::spawn(move || {
-        loop {
-            let sum = rx.recv().unwrap();
-            // 等待接收主线程计算完成的信号
-            println!("子线程计算：1 + 1 = {}", sum);
-        }
-    });
-    run_main(&client);
-
-    loop {
-        let chain_id = client.chain_id();
-        let call_data = CallJsonObj {
-            contract_addr: "0x81A1F0EaAe2a930B3CE1477e67500db7C6cA5719".to_string(),
-            abi_path: "Randao_sol_Randao.abi".to_string(),
-            sec_key: config.secret.clone(),
-            gas: 100000,
-            gas_price: 1000000,
-            func_name: "newCampaign".to_string(),
-            args: "newCampaign".to_string(),
-        };
-        test_contract_new_campaign();
-        /* let num = 3u128;
-        let query_data = QueryJson{
-            sec_key : config.secret.clone(),
-            contract_addr:"0x81A1F0EaAe2a930B3CE1477e67500db7C6cA5719".to_string(),
-            abi_path : "Randao_sol_Randao.abi".to_string(),
-            func_name: "multiply".to_string(),
-            args: num.to_string()
-        };
-
-        client.contract_query(query_data);
-        client.contract_get_campaign_query(1);*/
-
-        // 计算1+1
-        let sum = 1 + 1;
-        // 向子线程发送计算完成的信号
-        tx.send(sum).unwrap();
-        thread::sleep(Duration::from_millis(20000));
-    }
-
-    child_thread.join().unwrap();
-    Ok(())
-}
-fn run_main(client: &BlockClient) -> Result<U256, Error> {
     let chain_id = client.chain_id().unwrap();
     let block = client.current_block().unwrap();
+
+    stop.store(true, Order::SeqCst);
+
     if chain_id.to_string() != client.config.chain.chainId {
         return Err(Error::CheckChainErr);
     }
@@ -118,29 +77,49 @@ fn run_main(client: &BlockClient) -> Result<U256, Error> {
         block.number,
         client.config.chain.opts.randao
     );
-
+    let mut handle_vec = Vec::new();
     loop {
-        let new_campaign_num = match client.contract_campaign_num() {
+        let mut local_client = client.clone();
+        let new_campaign_num = match local_client.contract_campaign_num() {
             None => {
                 return Err(Error::GetNumCampaignsErr);
             }
             Some(num) => num,
         };
-        if new_campaign_num > campaign_num {
+        if stop.load(Order::SeqCst) {
+            break;
+        }
+
+        let t = thread::spawn(move || {
+
+            println!("1+1 = 3");
+        });
+        handle_vec.push(t);
+        /*if new_campaign_num > campaign_num {
             let campaign_id = new_campaign_num.as_u128() - 1;
-            let info = client.contract_get_campaign_info(campaign_id).unwrap();
-            if client.config.chain.opts.maxCampaigns <= i32::try_from(new_campaign_num).unwrap() {
+            let info = local_client.contract_get_campaign_info(campaign_id).unwrap();
+            if local_client.config.chain.opts.maxCampaigns <= i32::try_from(new_campaign_num).unwrap() {
                 return Err(Error::GetNumCampaignsErr);
             }
-            if !check_campaign_info(client, &info, &client.config) {
+            if !check_campaign_info(&local_client, &info, &local_client.config) {
                 return Err(Error::CheckCampaignsInfoErr);
             }
+            let t = thread::spawn(move || {
+                let work_thd = WorkThd::new(&local_client, campaign_id.clone(), info, local_client.config.clone());
+                let result = work_thd.do_task().unwrap_or_else(|error| U256::from({
+                    error!("do_task error: {}", error);
+                    -1
+                }));
 
-            //new_thread();
-        }
-        sleep(Duration::from_millis(500));
+                info!("campaign_id:{:?},  randao:{:?}",campaign_id,result);
+            });
+            handle_vec.push(t);
+        }*/
+        sleep(Duration::from_millis(1000));
     }
-
+    for t in handle_vec {
+        t.join().unwrap();
+    }
     return Ok(U256::from(1));
 }
 
@@ -155,8 +134,8 @@ fn test_contract_new_campaign() {
     let deposit: u128 = 1000000000000000000;
     //let  arg = format!("{:?},{:?},{:?},{:?}", bnum, deposit, commitBalkline, commitDeadline);
     client.contract_setup(
-        &config.secret.clone(),
-        "0x81A1F0EaAe2a930B3CE1477e67500db7C6cA5719",
+        &config.root_secret.clone(),
+        "0x0CCe486D83bA3BD519BB457d746fc6D7b3a6a620",
         "Randao_sol_Randao.abi",
         10000000,
         10000000000,
@@ -201,6 +180,6 @@ fn test_contract_new_campaign() {
         .unwrap();
     println!("my_bounty :{:?}", my_bounty);
 
-    let work_thd = WorkThd::new(client, campaign, info, config);
+    let work_thd = WorkThd::new(&client, campaign, info, config);
     work_thd.do_task().unwrap();
 }

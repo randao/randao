@@ -126,11 +126,31 @@ pub struct BlockClient {
     pub accounts: Arc<web3::api::Accounts<Http>>,
     pub root_sk: secp256k1::SecretKey,
     pub root_addr: Address,
-    pub overflow_flag: AtomicUsize,
     pub config: config::Config,
     pub randao_contract: RandaoContract,
     rt: Runtime,
 }
+
+impl Clone for BlockClient {
+    fn clone(&self) -> Self {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        BlockClient {
+            web3: self.web3.clone(),
+            eth: self.eth.clone(),
+            accounts: self.accounts.clone(),
+            root_sk: self.root_sk.clone(),
+            root_addr: self.root_addr.clone(),
+            config: self.config.clone(),
+            randao_contract: self.randao_contract.clone(),
+            rt
+        }
+    }
+}
+
 
 #[derive(Debug)]
 pub struct NetworkInfo {
@@ -164,7 +184,6 @@ impl BlockClient {
             root_sk,
             root_addr,
             rt,
-            overflow_flag: AtomicUsize::from(0),
             randao_contract: RandaoContract::default(),
             config: config.clone(),
         }
@@ -290,16 +309,6 @@ impl BlockClient {
                     break (wait, None);
                 }
             }
-        }
-    }
-
-    pub fn check_wait_overflow(&self, id: usize, interval: Option<u64>) {
-        loop {
-            let flag = self.overflow_flag.load(Ordering::Relaxed);
-            if flag == 0 || flag == id {
-                break;
-            }
-            std::thread::sleep(Duration::from_secs(interval.unwrap_or(3)));
         }
     }
 
@@ -542,7 +551,7 @@ impl BlockClient {
         self.rt
             .block_on(async {
                 let eth = (*self.eth.clone()).clone();
-                let sec = self.config.secret.as_str();
+                let sec = self.config.root_secret.as_str();
                 self.randao_contract
                     .get_campaign_info(eth, campaign_id, sec)
                     .await
@@ -1017,14 +1026,14 @@ pub struct WorkThd {
 
 impl WorkThd {
     pub fn new(
-        cli: BlockClient,
+        cli: &BlockClient,
         campaign_id: u128,
         campaign_info: CampaignInfo,
         cfg: Config,
     ) -> WorkThd {
         // 1)
         WorkThd {
-            cli: cli,
+            cli: cli.clone(),
             campaign_id: campaign_id,
             campaign_info: campaign_info,
             cfg: cfg,

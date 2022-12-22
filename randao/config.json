@@ -17,7 +17,7 @@
             "startBlock": 0
         }
     },
-    "secret": "4d0ea2cf957b5e39d5195e3143f1d23f72897e20e18c64a7b25de44b8ef11311",
+    "root_secret": "4d0ea2cf957b5e39d5195e3143f1d23f72897e20e18c64a7b25de44b8ef11311",
     "secret_key": {
         "founder_secret": "4d0ea2cf957b5e39d5195e3143f1d23f72897e20e18c64a7b25de44b8ef11311",
         "follower_secret": "080b0ba9077f606d2a1fb1a9340e96454d17161c45c43147cb6c3d9b967e35c5",
