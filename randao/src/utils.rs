@@ -50,7 +50,7 @@ pub fn real_network(network: &str) -> Vec<Option<String>> {
 
 #[inline(always)]
 pub fn extract_keypair_from_config(config: &Config) -> (secp256k1::SecretKey, Address) {
-    let sk_str = config.secret.clone();
+    let sk_str = config.root_secret.clone();
     let root_sk = secp256k1::SecretKey::from_str(sk_str.trim()).unwrap();
     let s = secp256k1::Secp256k1::signing_only();
     let root_pk = secp256k1::PublicKey::from_secret_key(&s, &root_sk);
@@ -122,7 +122,7 @@ pub fn check_campaign_info(
     config: &Config,
 ) -> bool {
     let block_number = client.block_number().unwrap();
-    let (root_sk, root_addr) = extract_keypair_from_str(client.config.secret.clone());
+    let (root_sk, root_addr) = extract_keypair_from_str(client.config.root_secret.clone());
     let balance = client.balance(root_addr, Some(Number(block_number)));
     if U256::from_str(config.chain.opts.minGasReserve.as_str()).unwrap() >= balance {
         return false;

@@ -101,7 +101,7 @@ pub struct Opts {
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Config {
     pub chain: Chain,
-    pub secret: String,
+    pub root_secret: String,
     pub secret_key: ConfigKey,
 }
 
