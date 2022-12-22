@@ -146,11 +146,10 @@ impl Clone for BlockClient {
             root_addr: self.root_addr.clone(),
             config: self.config.clone(),
             randao_contract: self.randao_contract.clone(),
-            rt
+            rt,
         }
     }
 }
-
 
 #[derive(Debug)]
 pub struct NetworkInfo {

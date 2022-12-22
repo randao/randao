@@ -23,42 +23,54 @@ use std::{
     time::Duration,
 };
 
-use std::process;
-use std::sync::atomic::{AtomicBool, Ordering as Order};
 use clap::Parser;
 use commands::*;
+use lazy_static::lazy_static;
 use log::{debug, error, info};
+use nix::{
+    libc,
+    sys::signal::{self, SigHandler, Signal},
+};
 use randao::{
     config::*, contract::*, error::Error, one_eth_key, parse_call_json, parse_deploy_json,
     parse_query_json, utils::*, BlockClient, CallJson, CallJsonObj, DeployJson, DeployJsonObj,
     KeyPair, QueryJson,
 };
 use rayon::prelude::*;
+use std::process;
+use std::sync::atomic::{AtomicBool, Ordering as Order};
 use web3::types::BlockNumber::Number;
 use web3::types::{Address, Block, BlockId, BlockNumber, TransactionId, H256, U256, U64};
 
-fn main() {
+lazy_static! {
+    static ref STOP: AtomicBool = AtomicBool::new(false);
+}
 
+extern "C" fn handle_sigint(sig_no: libc::c_int) {
+    info!("signal_handler has been runned {:?}", sig_no);
+    STOP.store(true, Order::SeqCst);
+}
+
+fn main() {
     match run_main() {
-        Ok(_) => {
-        }
+        Ok(_) => {}
         Err(error) => {
             let e = format!("main thread err:{:?}", error);
-            error!("{}",e);
+            error!("{}", e);
         }
     }
     process::exit(0);
     //test_contract_new_campaign();
 }
 fn run_main() -> Result<U256, Error> {
-    let stop = Arc::new(AtomicBool::new(false));
+    let handler = SigHandler::Handler(handle_sigint);
+    unsafe { signal::signal(Signal::SIGTERM, handler) }.unwrap();
+
     let opt = Opts::parse();
     let config: Config = Config::parse_from_file(&opt.config);
     let mut client = BlockClient::setup(&config, None);
     let chain_id = client.chain_id().unwrap();
     let block = client.current_block().unwrap();
-
-    stop.store(true, Order::SeqCst);
 
     if chain_id.to_string() != client.config.chain.chainId {
         return Err(Error::CheckChainErr);
@@ -78,7 +90,7 @@ fn run_main() -> Result<U256, Error> {
         client.config.chain.opts.randao
     );
     let mut handle_vec = Vec::new();
-    loop {
+    while !STOP.load(Order::SeqCst) {
         let mut local_client = client.clone();
         let new_campaign_num = match local_client.contract_campaign_num() {
             None => {
@@ -86,12 +98,8 @@ fn run_main() -> Result<U256, Error> {
             }
             Some(num) => num,
         };
-        if stop.load(Order::SeqCst) {
-            break;
-        }
 
         let t = thread::spawn(move || {
-
             println!("1+1 = 3");
         });
         handle_vec.push(t);
