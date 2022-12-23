@@ -5,6 +5,7 @@ mod config;
 use randao::WorkThd;
 use std::borrow::Borrow;
 use tokio::time::timeout;
+use uuid::Uuid;
 mod commands;
 mod contract;
 
@@ -46,7 +47,7 @@ lazy_static! {
     static ref STOP: AtomicBool = AtomicBool::new(false);
 }
 
-extern "C" fn handle_sigint(sig_no: libc::c_int) {
+extern "C" fn handle_sig(sig_no: libc::c_int) {
     info!("signal_handler has been runned {:?}", sig_no);
     STOP.store(true, Order::SeqCst);
 }
@@ -63,7 +64,7 @@ fn main() {
     //test_contract_new_campaign();
 }
 fn run_main() -> Result<U256, Error> {
-    let handler = SigHandler::Handler(handle_sigint);
+    let handler = SigHandler::Handler(handle_sig);
     unsafe { signal::signal(Signal::SIGTERM, handler) }.unwrap();
 
     let opt = Opts::parse();
@@ -188,11 +189,12 @@ fn test_contract_new_campaign() {
         .unwrap();
     println!("my_bounty :{:?}", my_bounty);
 
-    let work_thd = WorkThd::new(&client, campaign, info, config);
-    let (campaign_id, randao_num, my_bounty) = work_thd.do_task().unwrap();
+    let uuid = Uuid::new_v4().to_string();
+    let work_thd = WorkThd::new(uuid, campaign, info, &client, config);
+    let (uuid, campaign_id, randao_num, my_bounty) = work_thd.do_task().unwrap();
 
     println!(
-        "campaign_id: {:?} randao_num: {:?} my_bounty :{:?}",
-        campaign_id, randao_num, my_bounty
+        "uuid: {:?} campaign_id: {:?} randao_num: {:?} my_bounty :{:?}",
+        uuid, campaign_id, randao_num, my_bounty
     );
 }
