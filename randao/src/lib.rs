@@ -2,7 +2,6 @@ pub mod config;
 pub mod contract;
 pub mod error;
 pub mod utils;
-
 use crate::{
     contract::{NewCampaignData, RandaoContract},
     error::{Error, InternalError, Result},
@@ -17,6 +16,11 @@ use log::{debug, error, info, warn};
 use rand::Rng;
 use reqwest::{Client, Url};
 use secp256k1::SecretKey as SecretKey2;
+use std::{
+    fs::OpenOptions,
+    io::{Read, Write},
+    path::Path,
+};
 
 use crate::config::CampaignInfo;
 use crate::utils::extract_keypair_from_str;
@@ -1017,162 +1021,241 @@ fn get_timestamp() -> u128 {
     }
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+struct TaskStatus {
+    step: u8,
+    hs: Vec<u8>,
+    randao_num: U256,
+    _s: String,
+}
+
 pub struct WorkThd {
-    cli: BlockClient,
+    uuid: String,
     campaign_id: u128,
     campaign_info: CampaignInfo,
+    cli: BlockClient,
     cfg: Config,
 }
 
 impl WorkThd {
     pub fn new(
-        cli: &BlockClient,
+        uuid: String,
         campaign_id: u128,
         campaign_info: CampaignInfo,
+        cli: &BlockClient,
         cfg: Config,
     ) -> WorkThd {
         // 1)
         WorkThd {
-            cli: cli.clone(),
+            uuid: uuid,
             campaign_id: campaign_id,
             campaign_info: campaign_info,
+            cli: cli.clone(),
             cfg: cfg,
         }
     }
 
-    pub fn do_task(&self) -> anyhow::Result<(u128, U256, U256)> {
-        let block_number = self.cli.block_number().unwrap();
+    pub fn do_task(&self) -> anyhow::Result<(String, u128, U256, U256)> {
+        let block_number = self
+            .cli
+            .block_number()
+            .ok_or(anyhow::format_err!("block_number err"))?;
         let (_, root_addr) = extract_keypair_from_str(self.cli.config.root_secret.clone());
         let balance = self.cli.balance(root_addr, Some(Number(block_number)));
 
-        // 2)
-        let mut rng = rand::thread_rng();
-        let mut _s = rng.gen::<u128>().to_string();
-        _s.push_str(&rng.gen::<u128>().to_string());
+        let mut task_status = TaskStatus {
+            step: 0,
+            hs: Vec::new(),
+            randao_num: U256::zero(),
+            _s: String::new(),
+        };
 
-        let hs = self
-            .cli
-            .contract_sha_commit(_s.as_str())
-            .ok_or(anyhow::format_err!("sha_commit err"))
-            .and_then(|v| {
-                info!(
-                    "sha_commit succeed, campaignID={:?}, hs={:?}",
-                    self.campaign_id, v
-                );
-                Ok(v)
-            })
-            .or_else(|e| {
-                error!(
-                    "sha_commit failed, campaignID={:?}, err={:?}",
-                    self.campaign_id,
-                    e.to_string()
-                );
-                Err(e)
-            })?;
+        let status_path_str = self.uuid.clone() + ".json";
+        let status_path = Path::new(&status_path_str);
 
-        let commit_tx_receipt = self
-            .cli
-            .contract_commit(
-                self.campaign_id,
-                self.campaign_info.deposit.as_u128(),
-                &self.cfg.secret_key.consumer_secret,
-                hs,
-            )
-            .ok_or(anyhow::format_err!("commit err"))
-            .and_then(|v| {
-                info!(
-                    "Commit succeed, campaignID={:?}, tx={:?} gasPrice={:?}",
-                    self.campaign_id, v.transaction_hash, v.gas_used
-                );
-                Ok(v)
-            })
-            .or_else(|e| {
-                error!(
-                    "Commit failed, campaignID={:?}, err={:?}",
-                    self.campaign_id,
-                    e.to_string()
-                );
-                Err(e)
-            })?;
-        info!("commit transaction receipt :{:?}", commit_tx_receipt);
+        let mut status_file;
+        if status_path.exists() && status_path.is_file() {
+            status_file = OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(&status_path)?;
 
-        // 3)
-        utils::wait_blocks(&self.cli);
-        let reveal_tx_receipt = self
-            .cli
-            .contract_reveal(
-                self.campaign_id,
-                self.campaign_info.deposit.as_u128(),
-                &self.cfg.secret_key.consumer_secret,
-                _s.as_str(),
-            )
-            .ok_or(anyhow::format_err!("reveal err"))
-            .and_then(|v| {
-                info!(
-                    "Reveal succeed, campaignID={:?}, tx={:?} gasPrice={:?}",
-                    self.campaign_id, v.transaction_hash, v.gas_used
-                );
-                Ok(v)
-            })
-            .or_else(|e| {
-                error!(
-                    "Reveal failed, fines={:?}, campaignID={:?}, err={:?}",
-                    self.campaign_id,
-                    3,
-                    e.to_string()
-                );
-                Err(e)
-            })?;
-        info!("reveal transaction receipt :{:?}", reveal_tx_receipt);
-
-        // 4)
-        utils::wait_blocks(&self.cli);
-        let randao_num = self
-            .cli
-            .contract_get_random(self.campaign_id, &self.cfg.secret_key.consumer_secret)
-            .ok_or(anyhow::format_err!("get_random err"))
-            .and_then(|v| {
-                info!(
-                    "get Random succeed, campaignID={:?}, randao num={:?}",
-                    self.campaign_id, v
-                );
-                Ok(v)
-            })
-            .or_else(|e| {
-                error!(
-                    "get Random failed, campaignID={:?}, err={:?}",
-                    self.campaign_id,
-                    e.to_string()
-                );
-                Err(e)
-            })?;
-        info!("randao_num :{:?}", randao_num);
-
-        let my_bounty = self
-            .cli
-            .contract_get_my_bounty(self.campaign_id, &self.cfg.secret_key.consumer_secret)
-            .ok_or(anyhow::format_err!("get_my_bounty err"))
-            .and_then(|v| {
-                info!(
-                    "Bounty claimed, campaignID={:?}, bounty={:?}",
-                    self.campaign_id, v
-                );
-                Ok(v)
-            })
-            .or_else(|e| {
-                error!(
-                    "Get bounty failed, campaignID={:?}, err={:?}",
-                    self.campaign_id,
-                    e.to_string()
-                );
-                Err(e)
-            })?;
-        info!("my_bounty :{:?}", my_bounty);
-
-        if my_bounty <= balance {
-            anyhow::bail!("my_bounty less than balance")
+            let mut status_str = String::new();
+            status_file.read_to_string(&mut status_str)?;
+            task_status = serde_json::from_str(&status_str[..])?;
+        } else {
+            status_file = OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create_new(true)
+                .open(&status_path)?;
         }
 
-        Ok((self.campaign_id, randao_num, my_bounty))
+        if task_status.step == 0 {
+            // 2)
+            let mut rng = rand::thread_rng();
+            let mut _s = rng.gen::<u128>().to_string();
+            _s.push_str(&rng.gen::<u128>().to_string());
+
+            let hs = self
+                .cli
+                .contract_sha_commit(_s.as_str())
+                .ok_or(anyhow::format_err!("sha_commit err"))
+                .and_then(|v| {
+                    info!(
+                        "sha_commit succeed, campaignID={:?}, hs={:?}",
+                        self.campaign_id, v
+                    );
+                    Ok(v)
+                })
+                .or_else(|e| {
+                    error!(
+                        "sha_commit failed, campaignID={:?}, err={:?}",
+                        self.campaign_id,
+                        e.to_string()
+                    );
+                    Err(e)
+                })?;
+
+            task_status.step = 1;
+            task_status.hs = hs;
+            task_status._s = _s;
+            status_file.write(serde_json::to_string(&task_status)?.as_bytes())?;
+        }
+
+        if task_status.step == 1 {
+            let commit_tx_receipt = self
+                .cli
+                .contract_commit(
+                    self.campaign_id,
+                    self.campaign_info.deposit.as_u128(),
+                    &self.cfg.secret_key.consumer_secret,
+                    task_status.hs.clone(),
+                )
+                .ok_or(anyhow::format_err!("commit err"))
+                .and_then(|v| {
+                    info!(
+                        "Commit succeed, campaignID={:?}, tx={:?} gasPrice={:?}",
+                        self.campaign_id, v.transaction_hash, v.gas_used
+                    );
+                    Ok(v)
+                })
+                .or_else(|e| {
+                    error!(
+                        "Commit failed, campaignID={:?}, err={:?}",
+                        self.campaign_id,
+                        e.to_string()
+                    );
+                    Err(e)
+                })?;
+            info!("commit transaction receipt :{:?}", commit_tx_receipt);
+
+            task_status.step = 2;
+            status_file.write(serde_json::to_string(&task_status)?.as_bytes())?;
+        }
+
+        // 3)
+        if task_status.step == 2 {
+            utils::wait_blocks(&self.cli);
+            let reveal_tx_receipt = self
+                .cli
+                .contract_reveal(
+                    self.campaign_id,
+                    self.campaign_info.deposit.as_u128(),
+                    &self.cfg.secret_key.consumer_secret,
+                    task_status._s.as_str(),
+                )
+                .ok_or(anyhow::format_err!("reveal err"))
+                .and_then(|v| {
+                    info!(
+                        "Reveal succeed, campaignID={:?}, tx={:?} gasPrice={:?}",
+                        self.campaign_id, v.transaction_hash, v.gas_used
+                    );
+                    Ok(v)
+                })
+                .or_else(|e| {
+                    error!(
+                        "Reveal failed, fines={:?}, campaignID={:?}, err={:?}",
+                        self.campaign_id,
+                        3,
+                        e.to_string()
+                    );
+                    Err(e)
+                })?;
+            info!("reveal transaction receipt :{:?}", reveal_tx_receipt);
+
+            task_status.step = 3;
+            status_file.write(serde_json::to_string(&task_status)?.as_bytes())?;
+        }
+
+        // 4)
+        if task_status.step == 3 {
+            utils::wait_blocks(&self.cli);
+            let randao_num = self
+                .cli
+                .contract_get_random(self.campaign_id, &self.cfg.secret_key.consumer_secret)
+                .ok_or(anyhow::format_err!("get_random err"))
+                .and_then(|v| {
+                    info!(
+                        "get Random succeed, campaignID={:?}, randao num={:?}",
+                        self.campaign_id, v
+                    );
+                    Ok(v)
+                })
+                .or_else(|e| {
+                    error!(
+                        "get Random failed, campaignID={:?}, err={:?}",
+                        self.campaign_id,
+                        e.to_string()
+                    );
+                    Err(e)
+                })?;
+            info!("randao_num :{:?}", randao_num);
+            task_status.step = 4;
+            task_status.randao_num = randao_num;
+
+            status_file.write(serde_json::to_string(&task_status)?.as_bytes())?;
+        }
+
+        if task_status.step == 4 {
+            let my_bounty = self
+                .cli
+                .contract_get_my_bounty(self.campaign_id, &self.cfg.secret_key.consumer_secret)
+                .ok_or(anyhow::format_err!("get_my_bounty err"))
+                .and_then(|v| {
+                    info!(
+                        "Bounty claimed, campaignID={:?}, bounty={:?}",
+                        self.campaign_id, v
+                    );
+                    Ok(v)
+                })
+                .or_else(|e| {
+                    error!(
+                        "Get bounty failed, campaignID={:?}, err={:?}",
+                        self.campaign_id,
+                        e.to_string()
+                    );
+                    Err(e)
+                })?;
+            info!("my_bounty :{:?}", my_bounty);
+
+            task_status.step = 5;
+            status_file.write(serde_json::to_string(&task_status)?.as_bytes())?;
+
+            fs::remove_file(&status_path)?;
+
+            if my_bounty <= balance {
+                anyhow::bail!("my_bounty less than balance")
+            }
+
+            return Ok((
+                self.uuid.clone(),
+                self.campaign_id,
+                task_status.randao_num,
+                my_bounty,
+            ));
+        }
+
+        anyhow::bail!("task status step error!!!")
     }
 }
