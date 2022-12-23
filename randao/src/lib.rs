@@ -1121,6 +1121,7 @@ impl WorkThd {
             task_status.hs = hs;
             task_status._s = _s;
             status_file.write(serde_json::to_string(&task_status)?.as_bytes())?;
+            status_file.flush()?;
         }
 
         if task_status.step == 1 {
@@ -1152,6 +1153,7 @@ impl WorkThd {
 
             task_status.step = 2;
             status_file.write(serde_json::to_string(&task_status)?.as_bytes())?;
+            status_file.flush()?;
         }
 
         // 3)
@@ -1186,6 +1188,7 @@ impl WorkThd {
 
             task_status.step = 3;
             status_file.write(serde_json::to_string(&task_status)?.as_bytes())?;
+            status_file.flush()?;
         }
 
         // 4)
@@ -1215,6 +1218,7 @@ impl WorkThd {
             task_status.randao_num = randao_num;
 
             status_file.write(serde_json::to_string(&task_status)?.as_bytes())?;
+            status_file.flush()?;
         }
 
         if task_status.step == 4 {
@@ -1241,6 +1245,8 @@ impl WorkThd {
 
             task_status.step = 5;
             status_file.write(serde_json::to_string(&task_status)?.as_bytes())?;
+            status_file.flush()?;
+            std::mem::drop(status_file);
 
             fs::remove_file(&status_path)?;
 
