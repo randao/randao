@@ -26,7 +26,7 @@ RUN git clone https://github.com/FindoraNetwork/randao.git -b integration_test \
   && mv randao /root/ \
   && cd /root/randao  \
   && cargo build --release
-COPY ./target/release/randao /bin/
-COPY ./randao/config.json /root/
+COPY /root/randao/target/release/randao /bin/
+COPY /root/randao/randao/config.json /root/
 
 ENTRYPOINT ["/bin/randao", "--config", "/root/config.json"]
