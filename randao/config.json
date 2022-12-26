@@ -17,6 +17,7 @@
             "startBlock": 0
         }
     },
+    "http_listen": "127.0.0.1:3000",
     "root_secret": "4d0ea2cf957b5e39d5195e3143f1d23f72897e20e18c64a7b25de44b8ef11311",
     "secret_key": {
         "founder_secret": "4d0ea2cf957b5e39d5195e3143f1d23f72897e20e18c64a7b25de44b8ef11311",

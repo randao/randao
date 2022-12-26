@@ -103,32 +103,34 @@ pub fn handle_error(error: Error) -> String {
     }
 }
 
+
 pub fn wait_blocks(client: &BlockClient) {
-    let mut isRunning = true;
+    let mut is_running = true;
     let initialBlockNumber = client.block_number().unwrap();
-    while isRunning {
+    while is_running {
         let currentBlockNumber = client.block_number().unwrap();
 
         if currentBlockNumber > initialBlockNumber {
-            isRunning = false;
+            is_running = false;
         }
         sleep(Duration::from_millis(500));
     }
 }
 
+#[warn(unused_parens)]
 pub fn check_campaign_info(
     client: &BlockClient,
     campaign_info: &CampaignInfo,
     config: &Config,
 ) -> bool {
     let block_number = client.block_number().unwrap();
-    let (root_sk, root_addr) = extract_keypair_from_str(client.config.root_secret.clone());
+    let (_root_sk, root_addr) = extract_keypair_from_str(client.config.root_secret.clone());
     let balance = client.balance(root_addr, Some(Number(block_number)));
     if U256::from_str(config.chain.opts.minGasReserve.as_str()).unwrap() >= balance {
         return false;
     }
 
-    let mut num = (campaign_info.bountypot.as_u128()
+    let  num = (campaign_info.bountypot.as_u128()
         / (campaign_info.deposit.as_u128() / (campaign_info.commitNum.as_u128() + 1)));
     if config.chain.opts.maxDeposit > i32::try_from(campaign_info.deposit).unwrap()
         && config.chain.opts.minRateOfReturn <= num as f32
