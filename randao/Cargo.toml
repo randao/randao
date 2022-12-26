@@ -28,9 +28,16 @@ chrono = "0.4.19"
 redis = { version = "0.21.5", features =[ "default", "tokio-comp" ] }
 derive_more = "0.99.17"
 anyhow = "1.0.44"
+prometheus = "0.13.3"
 csv = "1.1.6"
 lazy_static = "1.4.0"
 ethabi="18.0.0"
 rand = "0.8.5"
 nix = {version = "0.26.1", features=["signal"]}
 uuid = {version ="1.2.2", features = [ "v4", "fast-rng", "macro-diagnostics"]}
+actix-web = "4.0.1"
+actix-files = "0.6.0"
+actix-rt = "2.1.0"
+actix-cors = "0.6.1"
+async-trait = "0.1.42"
+rc = "0.1.1"

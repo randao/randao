@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate serde;
+#[macro_use]
+extern crate async_trait;
 
 mod config;
 use randao::WorkThd;
@@ -8,22 +10,15 @@ use tokio::time::timeout;
 use uuid::Uuid;
 mod commands;
 mod contract;
+mod api;
 
 use std::thread::sleep;
-use std::{
-    cell::RefCell,
-    cmp::Ordering,
-    ops::{Mul, MulAssign, Sub},
-    path::PathBuf,
-    str::FromStr,
-    sync::{
-        atomic::{AtomicU64, Ordering::Relaxed},
-        mpsc, Arc,
-    },
-    thread,
-    time::Duration,
-};
+use std::{cell::RefCell, cmp::Ordering, env, ops::{Mul, MulAssign, Sub}, path::PathBuf, str::FromStr, sync::{
+    atomic::{AtomicU64, Ordering::Relaxed},
+    mpsc, Arc,
+}, thread, time::Duration};
 
+use std::sync::Mutex;
 use clap::Parser;
 use commands::*;
 use lazy_static::lazy_static;
@@ -37,22 +32,102 @@ use randao::{
     parse_query_json, utils::*, BlockClient, CallJson, CallJsonObj, DeployJson, DeployJsonObj,
     KeyPair, QueryJson,
 };
-use rayon::prelude::*;
 use std::process;
+use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering as Order};
+use prometheus::{IntGauge, Registry};
+use prometheus::core::Collector;
 use web3::types::BlockNumber::Number;
 use web3::types::{Address, Block, BlockId, BlockNumber, TransactionId, H256, U256, U64};
+use actix_cors::Cors;
+use actix_web::{middleware, web, App, HttpServer, post,get, http, HttpRequest, HttpResponse, Route, Responder};
+use web3::futures::{FutureExt, TryFutureExt};
+use prometheus::{Encoder, TextEncoder, Counter};
+use prometheus::proto::MetricFamily;
+
+use crate::api::ApiResult;
 
 lazy_static! {
     static ref STOP: AtomicBool = AtomicBool::new(false);
 }
+
+#[derive(Clone)]
+struct MainThread{
+    client:Arc<Mutex<BlockClient>>,
+    registry:Registry,
+    work_count: Arc<Mutex<u128>>,
+}
+
+pub fn init(cfg: &mut web::ServiceConfig) {
+    cfg.service(exit);
+}
+
+#[post("/exit")]
+async fn exit() -> impl Responder {
+    STOP.store(true, Order::SeqCst);
+    return ApiResult::<i32>::new().code(400).with_msg("exit success ");
+}
+
+impl MainThread {
+    pub fn set_up() -> Self{
+        let opt = Opts::parse();
+        let config: Config = Config::parse_from_file(&opt.config);
+        let client = Arc::new(Mutex::new(BlockClient::setup(&config, None)));
+        let registry = Registry::new();
+        let thread_count = IntGauge::new("thread_count", "Number of threads currently running").unwrap();
+        registry.register(Box::new(thread_count.clone()));
+        MainThread{
+            client,
+            registry,
+            work_count: Arc::new(Mutex::new(0))
+        }
+    }
+
+    pub async fn run_http_server(&self) -> std::io::Result<()> {
+        HttpServer::new(move || {
+            App::new()
+                .wrap(middleware::Compress::default())
+                .wrap(middleware::Logger::default())
+                //.wrap(Cors::default().send_wildcard())
+                .wrap(Cors::permissive())
+                .default_service(web::route().to(api::notfound))
+                .service(web::scope("/randao").configure(init))
+        })
+            .keep_alive(std::time::Duration::from_secs(300))
+            .bind(self.client.lock().unwrap().config.http_listen.clone())?
+            .run()
+            .await
+    }
+
+    async fn metrics(registry: Registry) -> HttpResponse {
+        let mut buffer = Vec::new();
+        let encoder = TextEncoder::new();
+        let metric_families = registry.gather();
+        encoder.encode(&metric_families, &mut buffer).unwrap();
+        HttpResponse::Ok()
+            .content_type("text/plain")
+            .body(String::from_utf8(buffer).unwrap())
+    }
+}
+
 
 extern "C" fn handle_sig(sig_no: libc::c_int) {
     info!("signal_handler has been runned {:?}", sig_no);
     STOP.store(true, Order::SeqCst);
 }
 
-fn main() {
+#[actix_rt::main]
+async fn main()-> std::io::Result<()> {
+    thread::spawn(move || {
+        let mut main_thread = MainThread::set_up();
+        let mut rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        rt.block_on(async {
+            main_thread.run_http_server().await;
+        })
+    });
     match run_main() {
         Ok(_) => {}
         Err(error) => {
@@ -61,12 +136,8 @@ fn main() {
         }
     }
     process::exit(0);
-    //test_contract_new_campaign();
 }
 fn run_main() -> Result<U256, Error> {
-    let handler = SigHandler::Handler(handle_sig);
-    unsafe { signal::signal(Signal::SIGTERM, handler) }.unwrap();
-
     let opt = Opts::parse();
     let config: Config = Config::parse_from_file(&opt.config);
     let mut client = BlockClient::setup(&config, None);
@@ -90,6 +161,7 @@ fn run_main() -> Result<U256, Error> {
         block.number,
         client.config.chain.opts.randao
     );
+
     let mut handle_vec = Vec::new();
     while !STOP.load(Order::SeqCst) {
         let mut local_client = client.clone();
@@ -114,13 +186,11 @@ fn run_main() -> Result<U256, Error> {
                 return Err(Error::CheckCampaignsInfoErr);
             }
             let t = thread::spawn(move || {
-                let work_thd = WorkThd::new(&local_client, campaign_id.clone(), info, local_client.config.clone());
-                let result = work_thd.do_task().unwrap_or_else(|error| U256::from({
-                    error!("do_task error: {}", error);
-                    -1
-                }));
+                let uuid = Uuid::new_v4().to_string();
+                let work_thd = WorkThd::new(uuid,campaign_id.clone(),info,&local_client,   local_client.config.clone());
+                let (uuid, campaign_id, randao_num, my_bounty) = work_thd.do_task().unwrap();
 
-                info!("campaign_id:{:?},  randao:{:?}",campaign_id,result);
+                info!("campaign_id:{:?},  randao:{:?}", campaign_id, randao_num);
             });
             handle_vec.push(t);
         }*/
@@ -131,6 +201,8 @@ fn run_main() -> Result<U256, Error> {
     }
     return Ok(U256::from(1));
 }
+
+
 
 fn test_contract_new_campaign() {
     let opt = Opts::parse();
@@ -198,3 +270,4 @@ fn test_contract_new_campaign() {
         uuid, campaign_id, randao_num, my_bounty
     );
 }
+
