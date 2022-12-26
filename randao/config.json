@@ -1,9 +1,9 @@
 {
     "chain": {
         "name": "Anvil",
-        "chainId": "2153",
+        "chainId": "2152",
         "endpoint":"http://127.0.0.1:8545",
-        "participant": "0x02a5D1F97c24dC9399A2878dc44cbDA274093B6D",
+        "participant": "0x1082BF58Ead23cd5967d4058861f4c4a376Bdb47",
         "opts": {
             "randao": "0xA242C7682768c43B079b5B7dA09E2e7c80b1f5e2",
             "gasLimit": "1000000",
@@ -13,16 +13,16 @@
             "minRateOfReturn": 0.5,
             "minRevealWindow": 7,
             "maxRevealDelay": 6,
-            "maxCampaigns": 5,
+            "maxCampaigns": 500,
             "startBlock": 0
         }
     },
     "http_listen": "127.0.0.1:3000",
-    "root_secret": "4d0ea2cf957b5e39d5195e3143f1d23f72897e20e18c64a7b25de44b8ef11311",
+    "root_secret": "41a303aa45e54905d71e7c9f92fd7d53910fdafc5341a403bd9bb4b970dde5e6",
     "secret_key": {
-        "founder_secret": "4d0ea2cf957b5e39d5195e3143f1d23f72897e20e18c64a7b25de44b8ef11311",
-        "follower_secret": "080b0ba9077f606d2a1fb1a9340e96454d17161c45c43147cb6c3d9b967e35c5",
-        "consumer_secret": "6d98a66574510aeebdcbc2c60c864ca4e3fcacd6031a16890c3d497d9099880a",
-        "committer_secret": "0a51fb2592d3439f638edb2e761e617ec3a577496dda8f5935bb6cc648c65cf9"
+        "founder_secret": "41a303aa45e54905d71e7c9f92fd7d53910fdafc5341a403bd9bb4b970dde5e6",
+        "follower_secret": "79184128aae7b72623503d06ad9fcfa5317f18ed53a6c231496d6457ce378d86",
+        "consumer_secret": "f9dd580d1356c0a7a1b1a2f81c51e3e30aabcfab6a5895e7a0019b3bdf1392f0",
+        "committer_secret": "0bba9ccad0929809e6da7004bff7dce4f89899e2d6c524d671ad935869f98c24"
     }
 }

@@ -38,7 +38,7 @@ use std::sync::atomic::{AtomicBool, Ordering as Order};
 use prometheus::{IntGauge, Registry};
 use prometheus::core::Collector;
 use web3::types::BlockNumber::Number;
-use web3::types::{Address, Block, BlockId, BlockNumber, TransactionId, H256, U256, U64};
+use web3::types::{Address, Block, BlockId, BlockNumber, TransactionId, H256, U256, U64, TransactionReceipt};
 use actix_cors::Cors;
 use actix_web::{middleware, web, App, HttpServer, post,get, http, HttpRequest, HttpResponse, Route, Responder};
 use web3::futures::{FutureExt, TryFutureExt};
@@ -110,14 +110,12 @@ impl MainThread {
     }
 }
 
-
 extern "C" fn handle_sig(sig_no: libc::c_int) {
     info!("signal_handler has been runned {:?}", sig_no);
     STOP.store(true, Order::SeqCst);
 }
 
-#[actix_rt::main]
-async fn main()-> std::io::Result<()> {
+fn main()-> std::io::Result<()> {
     thread::spawn(move || {
         let mut main_thread = MainThread::set_up();
         let mut rt = tokio::runtime::Builder::new_current_thread()
@@ -133,21 +131,34 @@ async fn main()-> std::io::Result<()> {
         Err(error) => {
             let e = format!("main thread err:{:?}", error);
             error!("{}", e);
+            println!("{}", e);
         }
     }
     process::exit(0);
 }
+
 fn run_main() -> Result<U256, Error> {
     let opt = Opts::parse();
     let config: Config = Config::parse_from_file(&opt.config);
     let mut client = BlockClient::setup(&config, None);
-    let chain_id = client.chain_id().unwrap();
-    let block = client.current_block().unwrap();
+    client.contract_setup(
+        &config.root_secret.clone(),
+        &config.chain.participant.clone(),
+        "Randao_sol_Randao.abi",
+        10000000,
+        10000000000,
+    );
 
-    if chain_id.to_string() != client.config.chain.chainId {
+    let mut client_arc = Arc::new(client);
+    let chain_id = client_arc.chain_id().unwrap();
+    let block = client_arc.current_block().unwrap();
+
+    contract_new_campaign(&client_arc);
+
+    if chain_id.to_string() != client_arc.config.chain.chainId {
         return Err(Error::CheckChainErr);
     }
-    let mut campaign_num = match client.contract_campaign_num() {
+    let mut campaign_num = match client_arc.contract_campaign_num() {
         None => {
             return Err(Error::GetNumCampaignsErr);
         }
@@ -155,16 +166,19 @@ fn run_main() -> Result<U256, Error> {
     };
     info!(
         "chain_name:{:?}, chain_id:{:?}, block_num, endpoind:{:?}, campaigns_num:{:?}, randao:{:?}",
-        client.config.chain.name,
+        client_arc.config.chain.name,
         chain_id,
-        client.config.chain.endpoint,
+        client_arc.config.chain.endpoint,
         block.number,
-        client.config.chain.opts.randao
+        client_arc.config.chain.opts.randao
     );
 
     let mut handle_vec = Vec::new();
+
     while !STOP.load(Order::SeqCst) {
-        let mut local_client = client.clone();
+        contract_new_campaign(&client_arc);
+        let mut local_client = client_arc.clone();
+
         let new_campaign_num = match local_client.contract_campaign_num() {
             None => {
                 return Err(Error::GetNumCampaignsErr);
@@ -172,11 +186,9 @@ fn run_main() -> Result<U256, Error> {
             Some(num) => num,
         };
 
-        let t = thread::spawn(move || {
+        if new_campaign_num > campaign_num {
             println!("1+1 = 3");
-        });
-        handle_vec.push(t);
-        /*if new_campaign_num > campaign_num {
+
             let campaign_id = new_campaign_num.as_u128() - 1;
             let info = local_client.contract_get_campaign_info(campaign_id).unwrap();
             if local_client.config.chain.opts.maxCampaigns <= i32::try_from(new_campaign_num).unwrap() {
@@ -193,8 +205,8 @@ fn run_main() -> Result<U256, Error> {
                 info!("campaign_id:{:?},  randao:{:?}", campaign_id, randao_num);
             });
             handle_vec.push(t);
-        }*/
-        sleep(Duration::from_millis(1000));
+        }
+        sleep(Duration::from_millis(5000));
     }
     for t in handle_vec {
         t.join().unwrap();
@@ -202,25 +214,42 @@ fn run_main() -> Result<U256, Error> {
     return Ok(U256::from(1));
 }
 
+fn contract_new_campaign(client: &BlockClient) ->Option<TransactionReceipt>
+{
+    let block_num = client.block_number().unwrap();
+    let bnum = block_num.as_u64() + 20;
+    let commitBalkline: u128 = 16;
+    let commitDeadline: u128 = 8;
+    let deposit: u128 = 1000000000000000000;
+    //let  arg = format!("{:?},{:?},{:?},{:?}", bnum, deposit, commitBalkline, commitDeadline);
 
+    let new_data = NewCampaignData {
+        bnum: bnum.into(),
+        deposit: deposit.into(),
+        commitBalkline: commitBalkline.into(),
+        commitDeadline: commitDeadline.into(),
+    };
+     client.contract_new_campaign(1000000, 10000000000, new_data)
+}
 
+#[test]
 fn test_contract_new_campaign() {
     let opt = Opts::parse();
     let config: Config = Config::parse_from_file(&opt.config);
     let mut client = BlockClient::setup(&config, None);
+    client.contract_setup(
+        &config.root_secret.clone(),
+        &config.chain.participant.clone(),
+        "Randao_sol_Randao.abi",
+        10000000,
+        10000000000,
+    );
     let block_num = client.block_number().unwrap();
     let bnum = block_num.as_u64() + 10;
     let commitBalkline: u128 = 8;
     let commitDeadline: u128 = 4;
     let deposit: u128 = 1000000000000000000;
-    //let  arg = format!("{:?},{:?},{:?},{:?}", bnum, deposit, commitBalkline, commitDeadline);
-    client.contract_setup(
-        &config.root_secret.clone(),
-        "0x0CCe486D83bA3BD519BB457d746fc6D7b3a6a620",
-        "Randao_sol_Randao.abi",
-        10000000,
-        10000000000,
-    );
+
     let new_data = NewCampaignData {
         bnum: bnum.into(),
         deposit: deposit.into(),
@@ -230,6 +259,8 @@ fn test_contract_new_campaign() {
     client.contract_new_campaign(1000000, 10000000000, new_data);
     let campaign_id = client.contract_campaign_num().unwrap();
     let campaign = campaign_id.as_u128() - 1;
+    assert!(campaign > 0, "Campaign ID must be greater than 0");
+
     client.contract_follow(
         1000000,
         10000000000,

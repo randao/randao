@@ -133,7 +133,7 @@ pub struct BlockClient {
     pub root_addr: Address,
     pub config: config::Config,
     pub randao_contract: RandaoContract,
-    rt: Runtime,
+    rt: Arc<Runtime>,
 }
 
 impl Clone for BlockClient {
@@ -151,7 +151,7 @@ impl Clone for BlockClient {
             root_addr: self.root_addr.clone(),
             config: self.config.clone(),
             randao_contract: self.randao_contract.clone(),
-            rt,
+            rt:self.rt.clone(),
         }
     }
 }
@@ -180,14 +180,14 @@ impl BlockClient {
             .enable_all()
             .build()
             .unwrap();
-
+        let rt_arc = Arc::new(rt);
         Self {
             web3,
             eth,
             accounts,
             root_sk,
             root_addr,
-            rt,
+            rt:rt_arc,
             randao_contract: RandaoContract::default(),
             config: config.clone(),
         }
