@@ -1,49 +1,36 @@
 #[macro_use]
 extern crate serde;
-#[macro_use]
-extern crate async_trait;
+
 
 mod config;
 use randao::WorkThd;
-use std::borrow::Borrow;
-use tokio::time::timeout;
 use uuid::Uuid;
 mod commands;
 mod contract;
 mod api;
 
 use std::thread::sleep;
-use std::{cell::RefCell, cmp::Ordering, env, ops::{Mul, MulAssign, Sub}, path::PathBuf, str::FromStr, sync::{
-    atomic::{AtomicU64, Ordering::Relaxed},
-    mpsc, Arc,
+use std::{path::PathBuf, sync::{
+     Arc,
 }, thread, time::Duration};
 
 use std::sync::Mutex;
 use clap::Parser;
-use commands::*;
 use lazy_static::lazy_static;
-use log::{debug, error, info};
+use log::{error, info};
 use nix::{
     libc,
-    sys::signal::{self, SigHandler, Signal},
 };
 use randao::{
-    config::*, contract::*, error::Error, one_eth_key, parse_call_json, parse_deploy_json,
-    parse_query_json, utils::*, BlockClient, CallJson, CallJsonObj, DeployJson, DeployJsonObj,
-    KeyPair, QueryJson,
+    config::*, contract::*, error::Error, utils::*, BlockClient,
 };
 use std::process;
-use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering as Order};
 use prometheus::{IntGauge, Registry};
-use prometheus::core::Collector;
-use web3::types::BlockNumber::Number;
-use web3::types::{Address, Block, BlockId, BlockNumber, TransactionId, H256, U256, U64, TransactionReceipt};
+use web3::types::{ U256, TransactionReceipt};
 use actix_cors::Cors;
-use actix_web::{middleware, web, App, HttpServer, post,get, http, HttpRequest, HttpResponse, Route, Responder};
-use web3::futures::{FutureExt, TryFutureExt};
-use prometheus::{Encoder, TextEncoder, Counter};
-use prometheus::proto::MetricFamily;
+use actix_web::{middleware, web, App, HttpServer, post, HttpResponse, Responder};
+use prometheus::{Encoder, TextEncoder};
 
 use crate::api::ApiResult;
 
@@ -117,8 +104,8 @@ extern "C" fn handle_sig(sig_no: libc::c_int) {
 
 fn main()-> std::io::Result<()> {
     thread::spawn(move || {
-        let mut main_thread = MainThread::set_up();
-        let mut rt = tokio::runtime::Builder::new_current_thread()
+        let main_thread = MainThread::set_up();
+        let  rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
             .unwrap();
@@ -149,7 +136,7 @@ fn run_main() -> Result<U256, Error> {
         10000000000,
     );
 
-    let mut client_arc = Arc::new(client);
+    let client_arc = Arc::new(client);
     let chain_id = client_arc.chain_id().unwrap();
     let block = client_arc.current_block().unwrap();
 
@@ -158,7 +145,7 @@ fn run_main() -> Result<U256, Error> {
     if chain_id.to_string() != client_arc.config.chain.chainId {
         return Err(Error::CheckChainErr);
     }
-    let mut campaign_num = match client_arc.contract_campaign_num() {
+    let campaign_num = match client_arc.contract_campaign_num() {
         None => {
             return Err(Error::GetNumCampaignsErr);
         }
@@ -177,7 +164,7 @@ fn run_main() -> Result<U256, Error> {
 
     while !STOP.load(Order::SeqCst) {
         contract_new_campaign(&client_arc);
-        let mut local_client = client_arc.clone();
+        let local_client = client_arc.clone();
 
         let new_campaign_num = match local_client.contract_campaign_num() {
             None => {
@@ -298,19 +285,19 @@ fn test_contract_new_campaign(){
     );
     assert!(result.is_some());
 
-    for i in 0..1 {
+    for _ in 0..1 {
         wait_blocks(&client);
     }
     let _s = "131242344353464564564574574567456";
     let hs = client.contract_sha_commit(_s.clone()).unwrap();
     client.contract_commit(campaign, deposit, &config.secret_key.consumer_secret, hs);
-    for i in 0..1 {
+    for _ in 0..1 {
         wait_blocks(&client);
     }
     client.contract_reveal(campaign, deposit, &config.secret_key.consumer_secret, _s);
     let info = client.contract_get_campaign_info(campaign).unwrap();
     println!("campaign info :{:?}", info);
-    for i in 0..1 {
+    for _ in 0..1 {
         wait_blocks(&client);
     }
     let randao_num = client

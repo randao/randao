@@ -8,7 +8,7 @@ use web3::{
     self,
     api::Eth,
     contract::{tokens::Tokenizable, Contract, Options},
-    ethabi::{Int, ParamType, Token, Uint},
+    ethabi::{ Token},
     transports::Http,
     types::{
          TransactionReceipt, H160, U256
@@ -178,14 +178,14 @@ impl RandaoContract {
     pub async fn gas_new_campaign(
         &self,
         eth: Eth<Http>,
-        gas: u32,
-        gas_price: u128,
+        _gas: u32,
+        _gas_price: u128,
         args: NewCampaignData,
     ) -> web3::contract::Result<U256> {
         let abi = fs::read(&self.abi_path).unwrap();
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
         let contract = Contract::from_json(eth, contr_addr, &abi)?;
-        let (root_sk, root_addr) = extract_keypair_from_str(self.sec_key.to_string());
+        let (_root_sk, root_addr) = extract_keypair_from_str(self.sec_key.to_string());
 
         let opt = Options::default();
         //(args.bnum, args.deposit,args.commitBalkline, args.commitDeadline),
@@ -196,7 +196,7 @@ impl RandaoContract {
     }
 
     pub async fn campaign_num(&self, eth: Eth<Http>) -> web3::contract::Result<U256> {
-        let (root_sk, root_addr) = extract_keypair_from_str(self.sec_key.to_string());
+        let (_root_sk, root_addr) = extract_keypair_from_str(self.sec_key.to_string());
         let abi = fs::read(&self.abi_path).unwrap();
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
 
@@ -222,7 +222,7 @@ impl RandaoContract {
     }
 
     pub async fn sha_commit(&self, eth: Eth<Http>, _s: &str) -> web3::contract::Result<Vec<u8>> {
-        let (root_sk, root_addr) = extract_keypair_from_str(self.sec_key.to_string());
+        let (_root_sk, root_addr) = extract_keypair_from_str(self.sec_key.to_string());
         let abi = fs::read(&self.abi_path).unwrap();
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
 
@@ -258,7 +258,7 @@ impl RandaoContract {
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
         let contract = Contract::from_json(eth.clone(), contr_addr, &abi)?;
         let secretkey = SecretKey2::from_str(commit_sec_key).unwrap();
-        let (root_sk, root_addr) = extract_keypair_from_str(commit_sec_key.to_string());
+        let (_root_sk, root_addr) = extract_keypair_from_str(commit_sec_key.to_string());
         let opt_chech = Options {
             value: Some(deposit.into()),
             ..Default::default()
@@ -307,7 +307,7 @@ impl RandaoContract {
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
         let contract = Contract::from_json(eth.clone(), contr_addr, &abi)?;
         let secretkey = SecretKey2::from_str(commit_sec_key).unwrap();
-        let (root_sk, root_addr) = extract_keypair_from_str(commit_sec_key.to_string());
+        let (_root_sk, root_addr) = extract_keypair_from_str(commit_sec_key.to_string());
         let opt = Options {
             gas: Some(self.gas.into()),
             gas_price: Some(self.gas_price.into()),
@@ -349,7 +349,7 @@ impl RandaoContract {
         let abi = fs::read(&self.abi_path).unwrap();
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
         let contract = Contract::from_json(eth.clone(), contr_addr, &abi)?;
-        let (root_sk, root_addr) = extract_keypair_from_str(sec_key.to_string());
+        let (_root_sk, root_addr) = extract_keypair_from_str(sec_key.to_string());
         let opt = Options {
             gas: Some(self.gas.into()),
             gas_price: Some(self.gas_price.into()),

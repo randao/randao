@@ -28,24 +28,19 @@ use config::Config;
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use std::{
-    cell::RefCell,
     error::Error as StdError,
     fs,
     future::Future,
-    ops::AddAssign,
     path::PathBuf,
     str::FromStr,
     sync::{
-        atomic::{AtomicU32, AtomicUsize, Ordering},
+        atomic::{AtomicU32, Ordering},
         Arc,
     },
     time,
     time::Duration,
 };
 use tokio::{runtime::Runtime, sync::mpsc::Receiver, sync::Mutex};
-use web3::ethabi::ParamType;
-use web3::futures::Sink;
-use web3::signing::Key;
 use web3::types::BlockNumber::Number;
 use web3::{
     self,
@@ -55,18 +50,11 @@ use web3::{
     transports::Http,
     types::{
         Address, Block, BlockId, BlockNumber, Bytes, Transaction, TransactionId,
-        TransactionParameters, TransactionReceipt, H160, H256, U128, U256, U64,
+         TransactionReceipt, H160, H256, U128, U256, U64,
     },
 };
 
-const FRC20_ADDRESS: u64 = 0x1000;
 pub const BLOCK_TIME: u64 = 16;
-
-//const WEB3_SRV: &str = "http://127.0.0.1:8545";
-//const WEB3_SRV: &str = "http://18.236.205.22:8545";
-const WEB3_SRV: &str = "https://prod-testnet.prod.findora.org:8545";
-//const WEB3_SRV: &str = "https://dev-mainnetmock.dev.findora.org:8545";
-
 lazy_static! {
     pub(crate) static ref CUR_TASKS: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
     pub(crate) static ref MAX_TASKS: Arc<AtomicU32> = Arc::new(AtomicU32::new(2));
@@ -137,11 +125,6 @@ pub struct BlockClient {
 
 impl Clone for BlockClient {
     fn clone(&self) -> Self {
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-
         BlockClient {
             web3: self.web3.clone(),
             eth: self.eth.clone(),
@@ -438,8 +421,6 @@ impl BlockClient {
     }
 
     pub fn contract_query(&self, query_json: QueryJson) -> anyhow::Result<()> {
-        use ethabi::Error as EthError;
-
         self.rt.block_on(async {
             let QueryJson {
                 sec_key,
@@ -450,7 +431,7 @@ impl BlockClient {
             } = query_json;
 
             let args = parse_args_csv(&args)?;
-            let (root_sk, root_addr) = extract_keypair_from_str(sec_key.to_string());
+            let (_root_sk, root_addr) = extract_keypair_from_str(sec_key.to_string());
             let eth = (*self.eth.clone()).clone();
             let account = format!("0x{:x}", root_addr);
             let result =
@@ -518,7 +499,7 @@ impl BlockClient {
                 .await;
             let value = match result {
                 Ok(v) => Some(v),
-                Err(e) => None,
+                Err(_) => None,
             };
             value
         })
@@ -624,7 +605,7 @@ impl BlockClient {
     pub fn contract_reveal(
         &self,
         campaign_id: u128,
-        deposit: u128,
+        _deposit: u128,
         commit_sec_key: &str,
         _s: &str,
     ) -> Option<TransactionReceipt> {
@@ -795,9 +776,7 @@ async fn contract_deploy(
     let byetcode = fs::read(code_path).unwrap();
     let abi = fs::read(abi_path).unwrap();
 
-    let (root_sk, root_addr) = extract_keypair_from_str(sec_key.to_string());
     let secretkey = SecretKey2::from_str(sec_key).unwrap();
-
     let contract = if args.is_empty() {
         Contract::deploy(eth, &abi)?
             .confirmations(1)
