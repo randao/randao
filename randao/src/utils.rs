@@ -103,7 +103,6 @@ pub fn handle_error(error: Error) -> String {
     }
 }
 
-
 pub fn wait_blocks(client: &BlockClient) {
     let mut is_running = true;
     let initialBlockNumber = client.block_number().unwrap();
@@ -132,7 +131,7 @@ pub fn check_campaign_info(
 
     println!("{:?}, block_number :{:?}", campaign_info, block_number);
 
-    let  num = campaign_info.bountypot.as_u128()
+    let num = campaign_info.bountypot.as_u128()
         / (campaign_info.deposit.as_u128() / (campaign_info.commitNum.as_u128() + 1));
 
     let wei = u128::try_from(campaign_info.deposit).unwrap();
