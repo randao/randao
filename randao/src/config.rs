@@ -10,9 +10,7 @@ use web3::types::U256;
 pub struct CampaignInfo {
     pub bnum: U256,
     pub deposit: U256,
-    #[warn(non_snake_case)]
     pub commitBalkline: U256,
-    #[warn(non_snake_case)]
     pub commitDeadline: U256,
     pub random: U256,
     pub settled: bool,
@@ -63,7 +61,7 @@ impl CampaignInfo {
 }
 
 impl Detokenize for CampaignInfo {
-    fn from_tokens(tokens: Vec<Token>) -> Result<Self, Error> {
+    fn from_tokens(mut tokens: Vec<Token>) -> Result<Self, Error> {
         if tokens.len() != 1 {
             Err(Error::InvalidOutputType(format!(
                 "Expected single element, got a list: {:?}",
@@ -119,7 +117,6 @@ pub struct ConfigKey {
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Chain {
     pub name: String,
-    #[warn(non_snake_case)]
     pub chainId: String,
     pub endpoint: String,
     pub participant: String,

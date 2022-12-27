@@ -76,13 +76,15 @@ Purpose: participate in one single campaign until the campaign completes.
         - Call `reveal` on Randao contract with `_campaignID` and secret number `_s` and make sure that the call succeed.
         - End the work thread if the call fails (after block `campaign.bnum` and retry) and print proper log message.
             - Example error: "Reveal failed, campaignID=12, fines=3 err=VM Exception while processing transaction: Too late to reveal secret"
-            - Update (increment) prometheus metrics (e.g., "ONGOING_CAMPAIGNS" to track total number of ongoing campaigns)
+            - Update (decrement) prometheus metrics (e.g., "ONGOING_CAMPAIGNS" to track total number of ongoing campaigns)
         - Print reveal information.
             - Example info: "Reveal succeed, campaignID=12, tx=0x7d824b695d13ccf3007deb22eb9baddc6bef8105ccbfe5629ebb9d92cb1fe1b5 gasPrice=10000000000"
     
     4> Bounty claim.
-        - Wait until `balkline` height (`campaign.bnum - campaign.commitBalkline`).
-            - Make eth-call to `getRandom` on Randao contract with `_campaignID` and make sure that random number is successfully generated.
+        - Wait until height `campaign.bnum`.
+            - Make eth-call to `getRandom` on Randao contract with `_campaignID` to get the random number.
+            - If eth-call fails, print error information.
+                - Example error: "Get random failed, campaignID=12, err=VM Exception while processing transaction: Compaign is not settled"
         - Call `getMyBounty` on Randao contract with `_campaignID` and make sure that the call succeed.
             - Print error message if it's necessary for debugging.
             - Example error: "Get bounty failed, campaignID=12, err=VM Exception while processing transaction: Compaign is not in the bounty phase"
