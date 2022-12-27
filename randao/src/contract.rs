@@ -1,23 +1,17 @@
 use secp256k1::SecretKey as SecretKey2;
-use sha3::Digest;
 use std::str::FromStr;
 use std::{
     fs,
-    path::PathBuf,
-    sync::atomic::{AtomicU32, AtomicUsize, Ordering},
 };
 use web3::contract::tokens::Tokenize;
-use web3::futures::Sink;
 use web3::{
     self,
     api::Eth,
     contract::{tokens::Tokenizable, Contract, Options},
     ethabi::{Int, ParamType, Token, Uint},
-    signing::Key,
     transports::Http,
     types::{
-        Address, Block, BlockId, BlockNumber, Bytes, Transaction, TransactionId,
-        TransactionParameters, TransactionReceipt, H160, H256, U128, U256, U64,
+         TransactionReceipt, H160, U256
     },
 };
 
@@ -89,7 +83,7 @@ impl RandaoContract {
         campaign_id: u128,
         sec_key: &str,
     ) -> web3::contract::Result<CampaignInfo> {
-        let (root_sk, root_addr) = extract_keypair_from_str(sec_key.to_string());
+        let (_root_sk, root_addr) = extract_keypair_from_str(sec_key.to_string());
         let abi = fs::read(&self.abi_path).unwrap();
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
 
@@ -123,7 +117,6 @@ impl RandaoContract {
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
         let contract = Contract::from_json(eth, contr_addr, &abi)?;
         let secretkey = SecretKey2::from_str(&self.sec_key).unwrap();
-        let (root_sk, root_addr) = extract_keypair_from_str(self.sec_key.to_string());
 
         let opt = Options {
             gas: Some(gas.into()),
@@ -150,7 +143,7 @@ impl RandaoContract {
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
         let contract = Contract::from_json(eth.clone(), contr_addr, &abi)?;
         let secretkey = SecretKey2::from_str(follow_sec_key).unwrap();
-        let (root_sk, root_addr) = extract_keypair_from_str(follow_sec_key.to_string());
+        let (_root_sk, root_addr) = extract_keypair_from_str(follow_sec_key.to_string());
         let token_id: U256 = campaign_id.into();
         let opt_chech = Options::default();
 
