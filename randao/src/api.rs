@@ -62,8 +62,8 @@ impl<T: Serialize> ApiResult<T> {
     }
 }
 
-use std::fmt::{self, Debug, Display};
 use log::info;
+use std::fmt::{self, Debug, Display};
 
 impl<T: Debug + Serialize> Display for ApiResult<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

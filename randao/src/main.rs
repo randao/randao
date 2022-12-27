@@ -5,32 +5,51 @@ extern crate serde;
 mod config;
 use randao::WorkThd;
 use uuid::Uuid;
+mod api;
 mod commands;
 mod contract;
-mod api;
 
 use std::thread::sleep;
-use std::{path::PathBuf, sync::{
-     Arc,
-}, thread, time::Duration};
+use std::{
+    cell::RefCell,
+    cmp::Ordering,
+    env,
+    ops::{Mul, MulAssign, Sub},
+    path::PathBuf,
+    str::FromStr,
+    sync::{
+        atomic::{AtomicU64, Ordering::Relaxed},
+        mpsc, Arc,
+    },
+    thread,
+    time::Duration,
+};
 
-use std::sync::Mutex;
+use actix_cors::Cors;
+use actix_web::{
+    get, http, middleware, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder, Route,
+};
 use clap::Parser;
 use lazy_static::lazy_static;
 use log::{error, info};
 use nix::{
     libc,
 };
+use prometheus::core::Collector;
+use prometheus::proto::MetricFamily;
+use prometheus::{Counter, Encoder, TextEncoder};
+use prometheus::{IntGauge, Registry};
 use randao::{
     config::*, contract::*, error::Error, utils::*, BlockClient,
 };
 use std::process;
 use std::sync::atomic::{AtomicBool, Ordering as Order};
-use prometheus::{IntGauge, Registry};
-use web3::types::{ U256, TransactionReceipt};
-use actix_cors::Cors;
-use actix_web::{middleware, web, App, HttpServer, post, HttpResponse, Responder};
-use prometheus::{Encoder, TextEncoder};
+use std::sync::Mutex;
+use web3::futures::{FutureExt, TryFutureExt};
+use web3::types::BlockNumber::Number;
+use web3::types::{
+    Address, Block, BlockId, BlockNumber, TransactionId, TransactionReceipt, H256, U256, U64,
+};
 
 use crate::api::ApiResult;
 
@@ -39,9 +58,9 @@ lazy_static! {
 }
 
 #[derive(Clone)]
-struct MainThread{
-    client:Arc<Mutex<BlockClient>>,
-    registry:Registry,
+struct MainThread {
+    client: Arc<Mutex<BlockClient>>,
+    registry: Registry,
     work_count: Arc<Mutex<u128>>,
 }
 
@@ -56,17 +75,18 @@ async fn exit() -> impl Responder {
 }
 
 impl MainThread {
-    pub fn set_up() -> Self{
+    pub fn set_up() -> Self {
         let opt = Opts::parse();
         let config: Config = Config::parse_from_file(&opt.config);
         let client = Arc::new(Mutex::new(BlockClient::setup(&config, None)));
         let registry = Registry::new();
-        let thread_count = IntGauge::new("thread_count", "Number of threads currently running").unwrap();
+        let thread_count =
+            IntGauge::new("thread_count", "Number of threads currently running").unwrap();
         registry.register(Box::new(thread_count.clone()));
-        MainThread{
+        MainThread {
             client,
             registry,
-            work_count: Arc::new(Mutex::new(0))
+            work_count: Arc::new(Mutex::new(0)),
         }
     }
 
@@ -80,10 +100,10 @@ impl MainThread {
                 .default_service(web::route().to(api::notfound))
                 .service(web::scope("/randao").configure(init))
         })
-            .keep_alive(std::time::Duration::from_secs(300))
-            .bind(self.client.lock().unwrap().config.http_listen.clone())?
-            .run()
-            .await
+        .keep_alive(std::time::Duration::from_secs(300))
+        .bind(self.client.lock().unwrap().config.http_listen.clone())?
+        .run()
+        .await
     }
 
     async fn metrics(registry: Registry) -> HttpResponse {
@@ -102,7 +122,7 @@ extern "C" fn handle_sig(sig_no: libc::c_int) {
     STOP.store(true, Order::SeqCst);
 }
 
-fn main()-> std::io::Result<()> {
+fn main() -> std::io::Result<()> {
     thread::spawn(move || {
         let main_thread = MainThread::set_up();
         let  rt = tokio::runtime::Builder::new_current_thread()
@@ -175,16 +195,26 @@ fn run_main() -> Result<U256, Error> {
 
         if new_campaign_num > campaign_num {
             let campaign_id = new_campaign_num.as_u128() - 1;
-            let info = local_client.contract_get_campaign_info(campaign_id).unwrap();
-            if local_client.config.chain.opts.maxCampaigns <= i32::try_from(new_campaign_num).unwrap() {
-               break //return Err(Error::GetNumCampaignsErr);
+            let info = local_client
+                .contract_get_campaign_info(campaign_id)
+                .unwrap();
+            if local_client.config.chain.opts.maxCampaigns
+                <= i32::try_from(new_campaign_num).unwrap()
+            {
+                break; //return Err(Error::GetNumCampaignsErr);
             }
             if !check_campaign_info(&local_client, &info, &local_client.config) {
-               continue //return Err(Error::CheckCampaignsInfoErr);
+                continue; //return Err(Error::CheckCampaignsInfoErr);
             }
             let t = thread::spawn(move || {
                 let uuid = Uuid::new_v4().to_string();
-                let work_thd = WorkThd::new(uuid,campaign_id.clone(),info,&local_client,   local_client.config.clone());
+                let work_thd = WorkThd::new(
+                    uuid,
+                    campaign_id.clone(),
+                    info,
+                    &local_client,
+                    local_client.config.clone(),
+                );
                 let (uuid, campaign_id, randao_num, my_bounty) = work_thd.do_task().unwrap();
 
                 info!("campaign_id:{:?},  randao:{:?}", campaign_id, randao_num);
@@ -199,8 +229,7 @@ fn run_main() -> Result<U256, Error> {
     return Ok(U256::from(1));
 }
 
-fn contract_new_campaign(client: &BlockClient) ->Option<TransactionReceipt>
-{
+fn contract_new_campaign(client: &BlockClient) -> Option<TransactionReceipt> {
     let block_num = client.block_number().unwrap();
     let bnum = block_num.as_u64() + 20;
     let commitBalkline: u128 = 16;
@@ -214,11 +243,11 @@ fn contract_new_campaign(client: &BlockClient) ->Option<TransactionReceipt>
         commitBalkline: commitBalkline.into(),
         commitDeadline: commitDeadline.into(),
     };
-     client.contract_new_campaign(1000000, 10000000000, new_data)
+    client.contract_new_campaign(1000000, 10000000000, new_data)
 }
 
 #[test]
-fn test_create_new_campaign(){
+fn test_create_new_campaign() {
     let config: PathBuf = PathBuf::from("config.json");
     let config: Config = Config::parse_from_file(&config);
     let mut client = BlockClient::setup(&config, None);
@@ -248,7 +277,7 @@ fn test_create_new_campaign(){
 }
 
 #[test]
-fn test_contract_new_campaign(){
+fn test_contract_new_campaign() {
     let config: PathBuf = PathBuf::from("config.json");
     let config: Config = Config::parse_from_file(&config);
     let mut client = BlockClient::setup(&config, None);
@@ -318,4 +347,3 @@ fn test_contract_new_campaign(){
         uuid, campaign_id, randao_num, my_bounty
     );
 }
-

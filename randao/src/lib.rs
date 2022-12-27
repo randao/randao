@@ -12,13 +12,14 @@ use bip0039::{Count, Language, Mnemonic};
 use bip32::{DerivationPath, XPrv};
 use lazy_static::lazy_static;
 use libsecp256k1::{PublicKey, SecretKey};
-use log::{ error, info, warn};
+use log::{error, info, warn};
 use rand::Rng;
 use reqwest::{Client, Url};
 use secp256k1::SecretKey as SecretKey2;
 use std::{
     fs::OpenOptions,
     io::{Read, Write},
+    ops::Sub,
     path::Path,
 };
 
@@ -133,7 +134,7 @@ impl Clone for BlockClient {
             root_addr: self.root_addr.clone(),
             config: self.config.clone(),
             randao_contract: self.randao_contract.clone(),
-            rt:self.rt.clone(),
+            rt: self.rt.clone(),
         }
     }
 }
@@ -169,7 +170,7 @@ impl BlockClient {
             accounts,
             root_sk,
             root_addr,
-            rt:rt_arc,
+            rt: rt_arc,
             randao_contract: RandaoContract::default(),
             config: config.clone(),
         }
@@ -1136,7 +1137,12 @@ impl WorkThd {
 
         // 3)
         if task_status.step == 2 {
-            utils::wait_blocks(&self.cli);
+            let mut balkline = self.campaign_info.bnum - self.campaign_info.commitBalkline;
+            while balkline > U256::zero() {
+                utils::wait_blocks(&self.cli);
+                balkline = balkline.sub(U256::from(1));
+            }
+
             let reveal_tx_receipt = self
                 .cli
                 .contract_reveal(
@@ -1171,7 +1177,12 @@ impl WorkThd {
 
         // 4)
         if task_status.step == 3 {
-            utils::wait_blocks(&self.cli);
+            let mut balkline = self.campaign_info.bnum - self.campaign_info.commitBalkline;
+            while balkline > U256::zero() {
+                utils::wait_blocks(&self.cli);
+                balkline = balkline.sub(U256::from(1));
+            }
+
             let randao_num = self
                 .cli
                 .contract_get_random(self.campaign_id, &self.cfg.secret_key.consumer_secret)

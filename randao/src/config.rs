@@ -103,7 +103,7 @@ pub struct Opts {
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Config {
     pub chain: Chain,
-    pub http_listen:String,
+    pub http_listen: String,
     pub root_secret: String,
     pub secret_key: ConfigKey,
 }
