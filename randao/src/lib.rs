@@ -4,7 +4,7 @@ pub mod error;
 pub mod utils;
 use crate::{
     contract::{NewCampaignData, RandaoContract},
-    error::{Error, InternalError, Result},
+    error::{Error, InternalError},
     utils::{extract_keypair_from_config, handle_error},
 };
 use anyhow::bail;
@@ -12,7 +12,7 @@ use bip0039::{Count, Language, Mnemonic};
 use bip32::{DerivationPath, XPrv};
 use lazy_static::lazy_static;
 use libsecp256k1::{PublicKey, SecretKey};
-use log::{debug, error, info, warn};
+use log::{ error, info, warn};
 use rand::Rng;
 use reqwest::{Client, Url};
 use secp256k1::SecretKey as SecretKey2;
@@ -27,7 +27,6 @@ use crate::utils::extract_keypair_from_str;
 use config::Config;
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
-use std::fmt;
 use std::{
     cell::RefCell,
     error::Error as StdError,

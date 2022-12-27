@@ -187,15 +187,13 @@ fn run_main() -> Result<U256, Error> {
         };
 
         if new_campaign_num > campaign_num {
-            println!("1+1 = 3");
-
             let campaign_id = new_campaign_num.as_u128() - 1;
             let info = local_client.contract_get_campaign_info(campaign_id).unwrap();
             if local_client.config.chain.opts.maxCampaigns <= i32::try_from(new_campaign_num).unwrap() {
-                return Err(Error::GetNumCampaignsErr);
+               break //return Err(Error::GetNumCampaignsErr);
             }
             if !check_campaign_info(&local_client, &info, &local_client.config) {
-                return Err(Error::CheckCampaignsInfoErr);
+               continue //return Err(Error::CheckCampaignsInfoErr);
             }
             let t = thread::spawn(move || {
                 let uuid = Uuid::new_v4().to_string();
@@ -233,9 +231,39 @@ fn contract_new_campaign(client: &BlockClient) ->Option<TransactionReceipt>
 }
 
 #[test]
-fn test_contract_new_campaign() {
-    let opt = Opts::parse();
-    let config: Config = Config::parse_from_file(&opt.config);
+fn test_create_new_campaign(){
+    let config: PathBuf = PathBuf::from("config.json");
+    let config: Config = Config::parse_from_file(&config);
+    let mut client = BlockClient::setup(&config, None);
+    client.contract_setup(
+        &config.root_secret.clone(),
+        &config.chain.participant.clone(),
+        "Randao_sol_Randao.abi",
+        10000000,
+        10000000000,
+    );
+    let block_num = client.block_number().unwrap();
+    let bnum = block_num.as_u64() + 10;
+    let commitBalkline: u128 = 8;
+    let commitDeadline: u128 = 4;
+    let deposit: u128 = 1000000000000000000;
+
+    let new_data = NewCampaignData {
+        bnum: bnum.into(),
+        deposit: deposit.into(),
+        commitBalkline: commitBalkline.into(),
+        commitDeadline: commitDeadline.into(),
+    };
+    client.contract_new_campaign(1000000, 10000000000, new_data);
+    let campaign_id = client.contract_campaign_num().unwrap();
+    let campaign = campaign_id.as_u128() - 1;
+    assert!(campaign > 0, "Campaign ID must be greater than 0");
+}
+
+#[test]
+fn test_contract_new_campaign(){
+    let config: PathBuf = PathBuf::from("config.json");
+    let config: Config = Config::parse_from_file(&config);
     let mut client = BlockClient::setup(&config, None);
     client.contract_setup(
         &config.root_secret.clone(),
@@ -261,13 +289,15 @@ fn test_contract_new_campaign() {
     let campaign = campaign_id.as_u128() - 1;
     assert!(campaign > 0, "Campaign ID must be greater than 0");
 
-    client.contract_follow(
+    let result = client.contract_follow(
         1000000,
         10000000000,
         campaign,
         deposit,
         &config.secret_key.follower_secret,
     );
+    assert!(result.is_some());
+
     for i in 0..1 {
         wait_blocks(&client);
     }
