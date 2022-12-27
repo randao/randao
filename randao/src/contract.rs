@@ -1,8 +1,6 @@
 use secp256k1::SecretKey as SecretKey2;
+use std::fs;
 use std::str::FromStr;
-use std::{
-    fs,
-};
 use web3::contract::tokens::Tokenize;
 use web3::{
     self,
@@ -10,9 +8,7 @@ use web3::{
     contract::{tokens::Tokenizable, Contract, Options},
     ethabi::{Int, ParamType, Token, Uint},
     transports::Http,
-    types::{
-         TransactionReceipt, H160, U256
-    },
+    types::{TransactionReceipt, H160, U256},
 };
 
 //use crate::utils::{extract_keypair_from_config, handle_error};
@@ -205,7 +201,13 @@ impl RandaoContract {
 
         let mut campaigns_id = U256::default();
 
-        println!("campaign_num parsa: {:?}, {:?},{:?} ,{:?}", campaigns_id, root_addr, self.sec_key.to_string(), contr_addr);
+        println!(
+            "campaign_num parsa: {:?}, {:?},{:?} ,{:?}",
+            campaigns_id,
+            root_addr,
+            self.sec_key.to_string(),
+            contr_addr
+        );
         let rerult: std::result::Result<U256, web3::contract::Error> = contract
             .query("numCampaigns", (), root_addr, opt, None)
             .await;
