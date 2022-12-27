@@ -9,43 +9,20 @@ use web3::contract::Error;
 use web3::types::BlockNumber::Number;
 use web3::types::{Address, H256};
 
+use std::fs::{OpenOptions, File};
+use std::io::{Read, Seek, Write};
+use std::sync::RwLock;
+use std::sync::Mutex;
+use lazy_static::lazy_static;
+use uuid::Uuid;
+use std::path::Path;
+
 pub fn log_cpus() -> u64 {
     num_cpus::get() as u64
 }
 
 pub fn phy_cpus() -> u64 {
     num_cpus::get_physical() as u64
-}
-
-pub fn real_network(network: &str) -> Vec<Option<String>> {
-    match network {
-        "local" => vec![Some("http://localhost:8545".to_string())],
-        "anvil" => vec![Some(
-            "https://prod-testnet.prod.findora.org:8545".to_string(),
-        )],
-        "main" => vec![Some(
-            "https://prod-mainnet.prod.findora.org:8545".to_string(),
-        )],
-        "mock" => vec![Some(
-            "https://dev-mainnetmock.dev.findora.org:8545".to_string(),
-        )],
-        "test" => vec![Some("http://34.211.109.216:8545".to_string())],
-        "qa01" => vec![Some("https://dev-qa01.dev.findora.org:8545".to_string())],
-        "qa02" => vec![Some("https://dev-qa02.dev.findora.org:8545".to_string())],
-        n => {
-            // comma seperated network endpoints
-            n.split(',')
-                .filter_map(|s| {
-                    let ns = s.trim();
-                    if ns.is_empty() || Url::parse(ns).is_err() {
-                        None
-                    } else {
-                        Some(Some(ns.to_string()))
-                    }
-                })
-                .collect::<Vec<_>>()
-        }
-    }
 }
 
 #[inline(always)]
@@ -146,4 +123,78 @@ pub fn check_campaign_info(
         return true;
     }
     false
+}
+
+fn store_uuid(uuid: &Uuid) -> Result<(), std::io::Error> {
+    let path = Path::new("uuids.txt");
+    if !path.exists() {
+        File::create(path)?;
+    }
+    let mut file = OpenOptions::new()
+        .append(true)
+        .open("uuids.txt")?;
+
+    write!(file, "{}\n", uuid)?;
+    Ok(())
+}
+
+fn remove_uuid(uuid: &Uuid) -> Result<(), std::io::Error> {
+    let mut uuids = read_uuids().unwrap();
+    uuids.retain(|u| u != uuid);
+    let mut file = OpenOptions::new().write(true).truncate(true).open("uuids.txt")?;
+    for uuid in uuids {
+        write!(file, "{}\n", uuid)?;
+    }
+    Ok(())
+}
+
+fn read_uuids() -> Result<Vec<Uuid>, std::io::Error> {
+    let mut file = File::open("uuids.txt")?;
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)?;
+    let uuid_strings: Vec<&str> = contents.split('\n').collect();
+    let mut uuids = Vec::new();
+    for uuid_string in uuid_strings {
+        if uuid_string.is_empty() {
+            continue;
+        }
+        let uuid = Uuid::from_str(uuid_string).unwrap();
+        uuids.push(uuid);
+    }
+    Ok(uuids)
+}
+
+fn delete_all_uuids() -> Result<(), std::io::Error>  {
+    let path = "uuids.txt";
+    let mut file = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(path)?;
+    file.write_all(b"")?;
+    Ok(())
+}
+#[test]
+fn test_uuid_store_and_remove() {
+    let uuid1 = Uuid::new_v4();
+    let uuid2 = Uuid::new_v4();
+    let uuid3 = Uuid::new_v4();
+
+    store_uuid(&uuid1).unwrap();
+    store_uuid(&uuid2).unwrap();
+    store_uuid(&uuid3).unwrap();
+
+    let uuids = read_uuids().unwrap();
+    assert_eq!(uuids.len(), 3);
+    assert!(uuids.contains(&uuid1));
+    assert!(uuids.contains(&uuid2));
+    assert!(uuids.contains(&uuid3));
+
+    remove_uuid(&uuid2).unwrap();
+
+    let uuids = read_uuids().unwrap();
+    assert_eq!(uuids.len(), 2);
+    assert!(uuids.contains(&uuid1));
+    assert!(!uuids.contains(&uuid2));
+    assert!(uuids.contains(&uuid3));
+    delete_all_uuids();
 }

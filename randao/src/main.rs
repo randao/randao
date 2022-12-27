@@ -11,15 +11,9 @@ mod contract;
 
 use std::thread::sleep;
 use std::{
-    cell::RefCell,
-    cmp::Ordering,
-    env,
-    ops::{Mul, MulAssign, Sub},
     path::PathBuf,
-    str::FromStr,
     sync::{
-        atomic::{AtomicU64, Ordering::Relaxed},
-        mpsc, Arc,
+        Arc,
     },
     thread,
     time::Duration,

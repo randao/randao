@@ -200,14 +200,6 @@ impl RandaoContract {
         let opt = Options::default();
 
         let mut campaigns_id = U256::default();
-
-        println!(
-            "campaign_num parsa: {:?}, {:?},{:?} ,{:?}",
-            campaigns_id,
-            root_addr,
-            self.sec_key.to_string(),
-            contr_addr
-        );
         let rerult: std::result::Result<U256, web3::contract::Error> = contract
             .query("numCampaigns", (), root_addr, opt, None)
             .await;
