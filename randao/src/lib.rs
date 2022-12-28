@@ -1229,6 +1229,23 @@ impl WorkThd {
 
         // 4)
         if task_status.step == 3 {
+            let mut curr_block_number = U256::from(
+                self.cli
+                    .block_number()
+                    .ok_or(anyhow::format_err!("block_number err"))?
+                    .as_u64(),
+            );
+            let bnum = self.campaign_info.bnum;
+            while !(curr_block_number >= bnum) {
+                utils::wait_blocks(&self.cli);
+                curr_block_number = U256::from(
+                    self.cli
+                        .block_number()
+                        .ok_or(anyhow::format_err!("block_number err"))?
+                        .as_u64(),
+                );
+            }
+            
             let randao_num = self
                 .cli
                 .contract_get_random(self.campaign_id, &self.cfg.secret_key.consumer_secret)
@@ -1257,23 +1274,6 @@ impl WorkThd {
         }
 
         if task_status.step == 4 {
-            let mut curr_block_number = U256::from(
-                self.cli
-                    .block_number()
-                    .ok_or(anyhow::format_err!("block_number err"))?
-                    .as_u64(),
-            );
-            let bnum = self.campaign_info.bnum;
-            while !(curr_block_number >= bnum) {
-                utils::wait_blocks(&self.cli);
-                curr_block_number = U256::from(
-                    self.cli
-                        .block_number()
-                        .ok_or(anyhow::format_err!("block_number err"))?
-                        .as_u64(),
-                );
-            }
-
             let my_bounty = self
                 .cli
                 .contract_get_my_bounty(self.campaign_id, &self.cfg.secret_key.consumer_secret)
