@@ -293,7 +293,7 @@ fn contract_new_campaign(client: &BlockClient) -> Option<TransactionReceipt> {
 
 #[test]
 fn test_create_new_campaign() {
-    let config: PathBuf = PathBuf::from("config.json");
+    let config: std::path::PathBuf = std::path::PathBuf::from("config.json");
     let config: Config = Config::parse_from_file(&config);
     let mut client = BlockClient::setup(&config, None);
     client.contract_setup(
@@ -323,6 +323,8 @@ fn test_create_new_campaign() {
 
 #[test]
 fn test_contract_new_campaign() {
+    use std::path::PathBuf;
+    
     let config: PathBuf = PathBuf::from("config.json");
     let config: Config = Config::parse_from_file(&config);
     let mut client = BlockClient::setup(&config, None);
