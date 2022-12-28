@@ -32,7 +32,7 @@ use hyper::{
 use prometheus::{Encoder, Gauge, HistogramVec, TextEncoder};
 
 use lazy_static::lazy_static;
-use prometheus::{labels, opts, register_gauge, register_histogram_vec, register_int_counter};
+use prometheus::{labels, opts, register_gauge, register_histogram_vec};
 
 use crate::api::ApiResult;
 

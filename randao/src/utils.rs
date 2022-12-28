@@ -24,24 +24,24 @@ pub fn phy_cpus() -> u64 {
 #[inline(always)]
 pub fn extract_keypair_from_config(config: &Config) -> (secp256k1::SecretKey, Address) {
     let sk_str = config.root_secret.clone();
-    let root_sk = secp256k1::SecretKey::from_str(sk_str.trim()).unwrap();
+    let _root_sk = secp256k1::SecretKey::from_str(sk_str.trim()).unwrap();
     let s = secp256k1::Secp256k1::signing_only();
-    let root_pk = secp256k1::PublicKey::from_secret_key(&s, &root_sk);
+    let root_pk = secp256k1::PublicKey::from_secret_key(&s, &_root_sk);
     let mut res = [0u8; 64];
     res.copy_from_slice(&root_pk.serialize_uncompressed()[1..65]);
     let root_addr = Address::from(H256::from_slice(Keccak256::digest(&res).as_slice()));
-    (root_sk, root_addr)
+    (_root_sk, root_addr)
 }
 
 #[inline(always)]
 pub fn extract_keypair_from_str(sk_str: String) -> (secp256k1::SecretKey, Address) {
-    let root_sk = secp256k1::SecretKey::from_str(sk_str.trim()).unwrap();
+    let _root_sk = secp256k1::SecretKey::from_str(sk_str.trim()).unwrap();
     let s = secp256k1::Secp256k1::signing_only();
-    let root_pk = secp256k1::PublicKey::from_secret_key(&s, &root_sk);
+    let root_pk = secp256k1::PublicKey::from_secret_key(&s, &_root_sk);
     let mut res = [0u8; 64];
     res.copy_from_slice(&root_pk.serialize_uncompressed()[1..65]);
     let root_addr = Address::from(H256::from_slice(Keccak256::digest(&res).as_slice()));
-    (root_sk, root_addr)
+    (_root_sk, root_addr)
 }
 
 pub fn check_parallel_args(max_par: u64) {

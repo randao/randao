@@ -26,8 +26,8 @@ use std::{
 use crate::config::CampaignInfo;
 use crate::utils::extract_keypair_from_str;
 use config::Config;
-use prometheus::Counter;
-use prometheus::{labels, opts, register_counter};
+use prometheus::{labels, opts};
+use prometheus::{register_gauge, Gauge};
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use std::{
@@ -57,7 +57,14 @@ use web3::{
     },
 };
 
+const _FRC20_ADDRESS: u64 = 0x1000;
 pub const BLOCK_TIME: u64 = 16;
+
+//const WEB3_SRV: &str = "http://127.0.0.1:8545";
+//const WEB3_SRV: &str = "http://18.236.205.22:8545";
+const _WEB3_SRV: &str = "https://prod-testnet.prod.findora.org:8545";
+//const WEB3_SRV: &str = "https://dev-mainnetmock.dev.findora.org:8545";
+
 lazy_static! {
     pub(crate) static ref CUR_TASKS: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
     pub(crate) static ref MAX_TASKS: Arc<AtomicU32> = Arc::new(AtomicU32::new(2));
@@ -67,7 +74,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref ONGOING_CAMPAIGNS: Counter = register_counter!(opts!(
+    pub static ref ONGOING_CAMPAIGNS: Gauge = register_gauge!(opts!(
         "http_requests_total",
         "Number of HTTP requests made.",
         labels! {"handler" => "all",}
@@ -128,7 +135,7 @@ pub struct BlockClient {
     pub web3: Arc<web3::Web3<Http>>,
     pub eth: Arc<web3::api::Eth<Http>>,
     pub accounts: Arc<web3::api::Accounts<Http>>,
-    pub root_sk: secp256k1::SecretKey,
+    pub _root_sk: secp256k1::SecretKey,
     pub root_addr: Address,
     pub config: config::Config,
     pub randao_contract: RandaoContract,
@@ -141,7 +148,7 @@ impl Clone for BlockClient {
             web3: self.web3.clone(),
             eth: self.eth.clone(),
             accounts: self.accounts.clone(),
-            root_sk: self.root_sk.clone(),
+            _root_sk: self._root_sk.clone(),
             root_addr: self.root_addr.clone(),
             config: self.config.clone(),
             randao_contract: self.randao_contract.clone(),
@@ -169,7 +176,7 @@ impl BlockClient {
         let web3 = Arc::new(web3::Web3::new(transport));
         let eth = Arc::new(web3.eth());
         let accounts = Arc::new(web3.accounts());
-        let (root_sk, root_addr) = extract_keypair_from_config(&config);
+        let (_root_sk, root_addr) = extract_keypair_from_config(&config);
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
@@ -179,7 +186,7 @@ impl BlockClient {
             web3,
             eth,
             accounts,
-            root_sk,
+            _root_sk,
             root_addr,
             rt: rt_arc,
             randao_contract: RandaoContract::default(),
@@ -511,7 +518,7 @@ impl BlockClient {
                 .await;
             let value = match result {
                 Ok(v) => Some(v),
-                Err(_) => None,
+                Err(_e) => None,
             };
             value
         })
@@ -788,6 +795,7 @@ async fn contract_deploy(
     let byetcode = fs::read(code_path).unwrap();
     let abi = fs::read(abi_path).unwrap();
 
+    let (_root_sk, _root_addr) = extract_keypair_from_str(sec_key.to_string());
     let secretkey = SecretKey2::from_str(sec_key).unwrap();
     let contract = if args.is_empty() {
         Contract::deploy(eth, &abi)?
@@ -1258,7 +1266,7 @@ impl WorkThd {
                 anyhow::bail!("my_bounty less than balance")
             }
 
-            // ONGOING_CAMPAIGNS.reset();
+            ONGOING_CAMPAIGNS.dec();
 
             return Ok((
                 self.uuid.clone(),
