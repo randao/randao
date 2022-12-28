@@ -11,12 +11,11 @@ use std::thread::sleep;
 use std::{sync::Arc, thread, time::Duration};
 
 use actix_cors::Cors;
-use actix_web::{middleware, post, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{middleware, post, web, App, HttpServer, Responder};
 use clap::Parser;
 use log::{error, info};
 use nix::libc;
 
-use prometheus::{IntGauge, Registry};
 use randao::{config::*, contract::*, error::Error, utils::*, BlockClient, ONGOING_CAMPAIGNS};
 use std::process;
 use std::str::FromStr;
@@ -44,8 +43,6 @@ lazy_static! {
 #[derive(Clone)]
 struct MainThread {
     client: Arc<Mutex<BlockClient>>,
-    registry: Registry,
-    work_count: Arc<Mutex<u128>>,
 }
 
 pub fn init(cfg: &mut web::ServiceConfig) {
@@ -63,14 +60,8 @@ impl MainThread {
         let opt = Opts::parse();
         let config: Config = Config::parse_from_file(&opt.config);
         let client = Arc::new(Mutex::new(BlockClient::setup(&config, None)));
-        let registry = Registry::new();
-        let thread_count =
-            IntGauge::new("thread_count", "Number of threads currently running").unwrap();
-        registry.register(Box::new(thread_count.clone()));
         MainThread {
             client,
-            registry,
-            work_count: Arc::new(Mutex::new(0)),
         }
     }
 
@@ -88,16 +79,6 @@ impl MainThread {
         .bind(self.client.lock().unwrap().config.http_listen.clone())?
         .run()
         .await
-    }
-
-    async fn metrics(registry: Registry) -> HttpResponse {
-        let mut buffer = Vec::new();
-        let encoder = TextEncoder::new();
-        let metric_families = registry.gather();
-        encoder.encode(&metric_families, &mut buffer).unwrap();
-        HttpResponse::Ok()
-            .content_type("text/plain")
-            .body(String::from_utf8(buffer).unwrap())
     }
 }
 
@@ -209,7 +190,7 @@ fn run_main() -> Result<U256, Error> {
     //test
     contract_new_campaign(&client_arc);
 
-    if chain_id.to_string() != client_arc.config.chain.chainId {
+    if chain_id.to_string() != client_arc.config.chain.chain_id {
         return Err(Error::CheckChainErr);
     }
     let campaign_num = match client_arc.contract_campaign_num() {
@@ -260,7 +241,7 @@ fn run_main() -> Result<U256, Error> {
             let info = local_client
                 .contract_get_campaign_info(campaign_id)
                 .unwrap();
-            if local_client.config.chain.opts.maxCampaigns
+            if local_client.config.chain.opts.max_campaigns
                 <= i32::try_from(new_campaign_num).unwrap()
             {
                 break; //return Err(Error::GetNumCampaignsErr);
@@ -310,8 +291,8 @@ fn contract_new_campaign(client: &BlockClient) -> Option<TransactionReceipt> {
     let new_data = NewCampaignData {
         bnum: bnum.into(),
         deposit: deposit.into(),
-        commitBalkline: commitBalkline.into(),
-        commitDeadline: commitDeadline.into(),
+        commit_balkline: commitBalkline.into(),
+        commit_deadline: commitDeadline.into(),
     };
     client.contract_new_campaign(1000000, 10000000000, new_data)
 }
@@ -337,8 +318,8 @@ fn test_create_new_campaign() {
     let new_data = NewCampaignData {
         bnum: bnum.into(),
         deposit: deposit.into(),
-        commitBalkline: commitBalkline.into(),
-        commitDeadline: commitDeadline.into(),
+        commit_balkline: commitBalkline.into(),
+        commit_deadline: commitDeadline.into(),
     };
     client.contract_new_campaign(1000000, 10000000000, new_data);
     let campaign_id = client.contract_campaign_num().unwrap();
@@ -369,8 +350,8 @@ fn test_contract_new_campaign() {
     let new_data = NewCampaignData {
         bnum: bnum.into(),
         deposit: deposit.into(),
-        commitBalkline: commitBalkline.into(),
-        commitDeadline: commitDeadline.into(),
+        commit_balkline: commitBalkline.into(),
+        commit_deadline: commitDeadline.into(),
     };
     client.contract_new_campaign(1000000, 10000000000, new_data);
     let campaign_id = client.contract_campaign_num().unwrap();

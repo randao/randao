@@ -1154,7 +1154,7 @@ impl WorkThd {
 
         // 3)
         if task_status.step == 2 {
-            let mut balkline = self.campaign_info.bnum - self.campaign_info.commitBalkline;
+            let mut balkline = self.campaign_info.bnum - self.campaign_info.commit_balkline;
             while balkline > U256::zero() {
                 utils::wait_blocks(&self.cli);
                 balkline = balkline.sub(U256::from(1));
@@ -1196,7 +1196,7 @@ impl WorkThd {
 
         // 4)
         if task_status.step == 3 {
-            let mut balkline = self.campaign_info.bnum - self.campaign_info.commitBalkline;
+            let mut balkline = self.campaign_info.bnum - self.campaign_info.commit_balkline;
             while balkline > U256::zero() {
                 utils::wait_blocks(&self.cli);
                 balkline = balkline.sub(U256::from(1));

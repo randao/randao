@@ -49,11 +49,11 @@ pub fn handle_error(error: Error) -> String {
 
 pub fn wait_blocks(client: &BlockClient) {
     let mut is_running = true;
-    let initialBlockNumber = client.block_number().unwrap();
+    let initial_block_number = client.block_number().unwrap();
     while is_running {
-        let currentBlockNumber = client.block_number().unwrap();
+        let current_block_number = client.block_number().unwrap();
 
-        if currentBlockNumber > initialBlockNumber {
+        if current_block_number > initial_block_number {
             is_running = false;
         }
         sleep(Duration::from_millis(500));
@@ -69,23 +69,23 @@ pub fn check_campaign_info(
     let block_number = client.block_number().unwrap();
     let (_root_sk, root_addr) = extract_keypair_from_str(client.config.root_secret.clone());
     let balance = client.balance(root_addr, Some(Number(block_number)));
-    if U256::from_str(config.chain.opts.minGasReserve.as_str()).unwrap() >= balance {
+    if U256::from_str(config.chain.opts.min_gas_reserve.as_str()).unwrap() >= balance {
         return false;
     }
 
     println!("{:?}, block_number :{:?}", campaign_info, block_number);
 
     let num = campaign_info.bountypot.as_u128()
-        / (campaign_info.deposit.as_u128() / (campaign_info.commitNum.as_u128() + 1));
+        / (campaign_info.deposit.as_u128() / (campaign_info.commit_num.as_u128() + 1));
 
     let wei = u128::try_from(campaign_info.deposit).unwrap();
     let eth = wei as f64 / 1_000_000_000_000_000_000f64;
 
-    if config.chain.opts.maxDeposit as f64 > eth
-        && config.chain.opts.minRateOfReturn <= num as f32
-        && campaign_info.bnum - campaign_info.commitBalkline > U256::from(block_number.as_u64())
-        && campaign_info.commitDeadline > U256::from(config.chain.opts.minRevealWindow)
-        && config.chain.opts.minRevealWindow > config.chain.opts.maxRevealDelay
+    if config.chain.opts.max_deposit as f64 > eth
+        && config.chain.opts.min_rate_of_return <= num as f32
+        && campaign_info.bnum - campaign_info.commit_balkline > U256::from(block_number.as_u64())
+        && campaign_info.commit_deadline > U256::from(config.chain.opts.min_reveal_window)
+        && config.chain.opts.min_reveal_window > config.chain.opts.max_reveal_delay
     {
         return true;
     }

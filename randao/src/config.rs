@@ -10,13 +10,13 @@ use web3::types::U256;
 pub struct CampaignInfo {
     pub bnum: U256,
     pub deposit: U256,
-    pub commitBalkline: U256,
-    pub commitDeadline: U256,
+    pub commit_balkline: U256,
+    pub commit_deadline: U256,
     pub random: U256,
     pub settled: bool,
     pub bountypot: U256,
-    pub commitNum: U256,
-    pub revealsNum: U256,
+    pub commit_num: U256,
+    pub reveals_num: U256,
 }
 
 impl CampaignInfo {
@@ -38,24 +38,24 @@ impl CampaignInfo {
         // 将 tokens 中的元素转换成相应的类型
         let bnum = tokens[0].to_owned().into_uint().unwrap();
         let deposit = tokens[1].to_owned().into_uint().unwrap();
-        let commitBalkline = tokens[2].to_owned().into_uint().unwrap();
-        let commitDeadline = tokens[3].to_owned().into_uint().unwrap();
+        let commit_balkline = tokens[2].to_owned().into_uint().unwrap();
+        let commit_deadline = tokens[3].to_owned().into_uint().unwrap();
         let random = tokens[4].to_owned().into_uint().unwrap();
         let settled = tokens[5].to_owned().into_bool().unwrap();
         let bountypot = tokens[6].to_owned().into_uint().unwrap_or(U256::from(0));
-        let commitNum = tokens[7].to_owned().into_uint().unwrap_or(U256::from(0));
-        let revealsNum = tokens[8].to_owned().into_uint().unwrap_or(U256::from(0));
+        let commit_num = tokens[7].to_owned().into_uint().unwrap_or(U256::from(0));
+        let reveals_num = tokens[8].to_owned().into_uint().unwrap_or(U256::from(0));
 
         Ok(CampaignInfo {
             bnum,
             deposit,
-            commitBalkline,
-            commitDeadline,
+            commit_balkline,
+            commit_deadline,
             random,
             settled,
             bountypot,
-            commitNum,
-            revealsNum,
+            commit_num,
+            reveals_num,
         })
     }
 }
@@ -117,7 +117,9 @@ pub struct ConfigKey {
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Chain {
     pub name: String,
-    pub chainId: String,
+    #[serde(rename = "chainId")]
+    pub chain_id: String,
+
     pub endpoint: String,
     pub participant: String,
     pub opts: ChainOpts,
@@ -125,15 +127,30 @@ pub struct Chain {
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct ChainOpts {
     pub randao: String,
-    pub gasLimit: String,
-    pub maxGasPrice: String,
-    pub minGasReserve: String,
-    pub maxDeposit: i32,
-    pub minRateOfReturn: f32,
-    pub minRevealWindow: i32,
-    pub maxRevealDelay: i32,
-    pub maxCampaigns: i32,
-    pub startBlock: i32,
+    #[serde(rename = "gasLimit")]
+    pub gas_limit: String,
+    #[serde(rename = "maxGasPrice")]
+    pub max_gas_price: String,
+    #[serde(rename = "minGasReserve")]
+    pub min_gas_reserve: String,
+
+    #[serde(rename = "maxDeposit")]
+    pub max_deposit: i32,
+
+    #[serde(rename = "minRateOfReturn")]
+    pub min_rate_of_return: f32,
+
+    #[serde(rename = "minRevealWindow")]
+    pub min_reveal_window: i32,
+
+    #[serde(rename = "maxRevealDelay")]
+    pub max_reveal_delay: i32,
+
+    #[serde(rename = "maxCampaigns")]
+    pub max_campaigns: i32,
+
+    #[serde(rename = "startBlock")]
+    pub start_block: i32,
 }
 
 impl Config {

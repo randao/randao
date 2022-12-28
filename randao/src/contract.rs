@@ -18,8 +18,8 @@ use crate::{extract_keypair_from_str, handle_error, CampaignInfo};
 pub struct NewCampaignData {
     pub bnum: U256,
     pub deposit: U256,
-    pub commitBalkline: U256,
-    pub commitDeadline: U256,
+    pub commit_balkline: U256,
+    pub commit_deadline: U256,
 }
 
 impl Tokenize for NewCampaignData {
@@ -27,8 +27,8 @@ impl Tokenize for NewCampaignData {
         let mut res: Vec<Token> = Vec::new();
         res.push(self.bnum.into_token());
         res.push(self.deposit.into_token());
-        res.push(self.commitBalkline.into_token());
-        res.push(self.commitDeadline.into_token());
+        res.push(self.commit_balkline.into_token());
+        res.push(self.commit_deadline.into_token());
         res
     }
 }
