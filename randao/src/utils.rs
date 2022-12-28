@@ -92,7 +92,7 @@ pub fn check_campaign_info(
     false
 }
 
-fn store_uuid(uuid: &Uuid) -> Result<(), std::io::Error> {
+pub fn store_uuid(uuid: &Uuid) -> Result<(), std::io::Error> {
     let path = Path::new("uuids.txt");
     if !path.exists() {
         File::create(path)?;
@@ -103,7 +103,7 @@ fn store_uuid(uuid: &Uuid) -> Result<(), std::io::Error> {
     Ok(())
 }
 
-fn remove_uuid(uuid: &Uuid) -> Result<(), std::io::Error> {
+pub fn remove_uuid(uuid: &Uuid) -> Result<(), std::io::Error> {
     let mut uuids = read_uuids().unwrap();
     uuids.retain(|u| u != uuid);
     let mut file = OpenOptions::new()
@@ -116,10 +116,14 @@ fn remove_uuid(uuid: &Uuid) -> Result<(), std::io::Error> {
     Ok(())
 }
 
-fn read_uuids() -> Result<Vec<Uuid>, std::io::Error> {
+pub fn read_uuids() -> Result<Vec<Uuid>, std::io::Error> {
     let mut file = File::open("uuids.txt")?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
+
+    if contents.len() == 0 {
+        return Ok(Vec::new());
+    }
     let uuid_strings: Vec<&str> = contents.split('\n').collect();
     let mut uuids = Vec::new();
     for uuid_string in uuid_strings {
@@ -132,7 +136,7 @@ fn read_uuids() -> Result<Vec<Uuid>, std::io::Error> {
     Ok(uuids)
 }
 
-fn delete_all_uuids() -> Result<(), std::io::Error> {
+pub fn delete_all_uuids() -> Result<(), std::io::Error> {
     let path = "uuids.txt";
     let mut file = OpenOptions::new().write(true).truncate(true).open(path)?;
     file.write_all(b"")?;

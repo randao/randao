@@ -19,6 +19,7 @@ use nix::libc;
 use prometheus::{IntGauge, Registry};
 use randao::{config::*, contract::*, error::Error, utils::*, BlockClient, ONGOING_CAMPAIGNS};
 use std::process;
+use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering as Order};
 use std::sync::Mutex;
 use web3::types::{TransactionReceipt, U256};
@@ -37,6 +38,7 @@ use crate::api::ApiResult;
 
 lazy_static! {
     static ref STOP: AtomicBool = AtomicBool::new(false);
+    static ref MUTEX: Mutex<()> = Mutex::new(());
 }
 
 #[derive(Clone)]
@@ -227,6 +229,19 @@ fn run_main() -> Result<U256, Error> {
 
     let mut handle_vec = Vec::new();
 
+    let guard = MUTEX.lock().unwrap();
+    match read_uuids() {
+        Ok(uuids) => {
+            drop(guard);
+            for uuid in uuids{
+
+            }
+        },
+        Err(err) => {
+            error!("Error loading UUID file: {:?}", err);
+        },
+    }
+
     while !STOP.load(Order::SeqCst) {
 
         //test
@@ -255,6 +270,11 @@ fn run_main() -> Result<U256, Error> {
             }
             let t = thread::spawn(move || {
                 let uuid = Uuid::new_v4().to_string();
+
+                let guard = MUTEX.lock().unwrap();
+                store_uuid(&Uuid::from_str(uuid.as_str().clone()).unwrap()).unwrap();
+                drop(guard);
+
                 let work_thd = WorkThd::new(
                     uuid,
                     campaign_id.clone(),
@@ -263,8 +283,11 @@ fn run_main() -> Result<U256, Error> {
                     local_client.config.clone(),
                 );
                 let (uuid, campaign_id, randao_num, my_bounty) = work_thd.do_task().unwrap();
-
                 info!("campaign_id:{:?},  randao:{:?}", campaign_id, randao_num);
+
+                let guard = MUTEX.lock().unwrap();
+                remove_uuid(&Uuid::from_str(uuid.as_str()).unwrap()).unwrap();
+                drop(guard);
             });
             handle_vec.push(t);
         }
