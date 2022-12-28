@@ -5,7 +5,6 @@ mod config;
 use randao::WorkThd;
 use uuid::Uuid;
 mod api;
-mod commands;
 mod contract;
 
 use std::thread::sleep;
@@ -205,6 +204,7 @@ fn run_main() -> Result<U256, Error> {
     let chain_id = client_arc.chain_id().unwrap();
     let block = client_arc.current_block().unwrap();
 
+    //test
     contract_new_campaign(&client_arc);
 
     if chain_id.to_string() != client_arc.config.chain.chainId {
@@ -228,6 +228,8 @@ fn run_main() -> Result<U256, Error> {
     let mut handle_vec = Vec::new();
 
     while !STOP.load(Order::SeqCst) {
+
+        //test
         contract_new_campaign(&client_arc);
         let local_client = client_arc.clone();
 

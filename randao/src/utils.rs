@@ -13,14 +13,6 @@ use std::io::{Read, Write};
 use std::path::Path;
 use uuid::Uuid;
 
-pub fn log_cpus() -> u64 {
-    num_cpus::get() as u64
-}
-
-pub fn phy_cpus() -> u64 {
-    num_cpus::get_physical() as u64
-}
-
 #[inline(always)]
 pub fn extract_keypair_from_config(config: &Config) -> (secp256k1::SecretKey, Address) {
     let sk_str = config.root_secret.clone();
@@ -42,27 +34,6 @@ pub fn extract_keypair_from_str(sk_str: String) -> (secp256k1::SecretKey, Addres
     res.copy_from_slice(&root_pk.serialize_uncompressed()[1..65]);
     let root_addr = Address::from(H256::from_slice(Keccak256::digest(&res).as_slice()));
     (_root_sk, root_addr)
-}
-
-pub fn check_parallel_args(max_par: u64) {
-    if max_par > log_cpus() * 1000 {
-        panic!(
-            "Two much working thread, maybe overload the system {}/{}",
-            max_par,
-            log_cpus(),
-        )
-    }
-    if max_par == 0 {
-        panic!("Invalid parallel parameters: max {}", max_par);
-    }
-}
-
-pub fn calc_pool_size(keys: usize, max_par: usize) -> usize {
-    let mut max_pool_size = keys * 2;
-    if max_pool_size > max_par {
-        max_pool_size = max_par;
-    }
-    max_pool_size
 }
 
 #[inline(always)]

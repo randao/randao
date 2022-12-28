@@ -8,9 +8,6 @@ pub enum Error {
     GetNumCampaignsErr,
     CheckCampaignsInfoErr,
     TxInternalErr(InternalError),
-    Io(std::io::Error),
-    Db(redis::RedisError),
-    NotSupport(String),
     Unknown(String),
 }
 
@@ -27,9 +24,6 @@ impl std::fmt::Display for Error {
             Error::GetNumCampaignsErr => write!(f, "Get numCampaigns faild"),
             Error::CheckCampaignsInfoErr => write!(f, "Check campaigns info faild"),
             Error::TxInternalErr(e) => write!(f, "Internal Error:: {:?}", e),
-            Error::Io(e) => write!(f, "Io error {:?}", e),
-            Error::Db(e) => write!(f, "Database error {:?}", e),
-            Error::NotSupport(e) => write!(f, "Not support: {}", e),
             Error::Unknown(e) => write!(f, "a unknown error happened: {}", e),
         }
     }

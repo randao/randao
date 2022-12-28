@@ -60,10 +60,6 @@ use web3::{
 const _FRC20_ADDRESS: u64 = 0x1000;
 pub const BLOCK_TIME: u64 = 16;
 
-//const WEB3_SRV: &str = "http://127.0.0.1:8545";
-//const WEB3_SRV: &str = "http://18.236.205.22:8545";
-const _WEB3_SRV: &str = "https://prod-testnet.prod.findora.org:8545";
-//const WEB3_SRV: &str = "https://dev-mainnetmock.dev.findora.org:8545";
 
 lazy_static! {
     pub(crate) static ref CUR_TASKS: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
