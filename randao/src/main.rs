@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate serde;
 
-
 mod config;
 use randao::WorkThd;
 use uuid::Uuid;
@@ -10,40 +9,30 @@ mod commands;
 mod contract;
 
 use std::thread::sleep;
-use std::{
-    path::PathBuf,
-    sync::{
-        Arc,
-    },
-    thread,
-    time::Duration,
-};
+use std::{sync::Arc, thread, time::Duration};
 
 use actix_cors::Cors;
-use actix_web::{
-    get, http, middleware, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder, Route,
-};
+use actix_web::{middleware, post, web, App, HttpResponse, HttpServer, Responder};
 use clap::Parser;
-use lazy_static::lazy_static;
 use log::{error, info};
-use nix::{
-    libc,
-};
-use prometheus::core::Collector;
-use prometheus::proto::MetricFamily;
-use prometheus::{Counter, Encoder, TextEncoder};
+use nix::libc;
+
 use prometheus::{IntGauge, Registry};
-use randao::{
-    config::*, contract::*, error::Error, utils::*, BlockClient,
-};
+use randao::{config::*, contract::*, error::Error, utils::*, BlockClient, ONGOING_CAMPAIGNS};
 use std::process;
 use std::sync::atomic::{AtomicBool, Ordering as Order};
 use std::sync::Mutex;
-use web3::futures::{FutureExt, TryFutureExt};
-use web3::types::BlockNumber::Number;
-use web3::types::{
-    Address, Block, BlockId, BlockNumber, TransactionId, TransactionReceipt, H256, U256, U64,
+use web3::types::{TransactionReceipt, U256};
+
+use hyper::{
+    header::CONTENT_TYPE,
+    service::{make_service_fn, service_fn},
+    Body, Request, Response, Server,
 };
+use prometheus::{Encoder, Gauge, HistogramVec, TextEncoder};
+
+use lazy_static::lazy_static;
+use prometheus::{labels, opts, register_gauge, register_histogram_vec, register_int_counter};
 
 use crate::api::ApiResult;
 
@@ -116,10 +105,61 @@ extern "C" fn handle_sig(sig_no: libc::c_int) {
     STOP.store(true, Order::SeqCst);
 }
 
+lazy_static! {
+    static ref HTTP_BODY_GAUGE: Gauge = register_gauge!(opts!(
+        "http_response_size_bytes",
+        "The HTTP response sizes in bytes.",
+        labels! {"handler" => "all",}
+    ))
+    .unwrap();
+    static ref HTTP_REQ_HISTOGRAM: HistogramVec = register_histogram_vec!(
+        "http_request_duration_seconds",
+        "The HTTP request latencies in seconds.",
+        &["handler"]
+    )
+    .unwrap();
+}
+
+async fn prometheus_http_svr_req(_req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+    let encoder = TextEncoder::new();
+
+    ONGOING_CAMPAIGNS.get();
+
+    let timer = HTTP_REQ_HISTOGRAM.with_label_values(&["all"]).start_timer();
+
+    let metric_families = prometheus::gather();
+    let mut buffer = vec![];
+    encoder.encode(&metric_families, &mut buffer).unwrap();
+    HTTP_BODY_GAUGE.set(buffer.len() as f64);
+
+    let response = Response::builder()
+        .status(200)
+        .header(CONTENT_TYPE, encoder.format_type())
+        .body(Body::from(buffer))
+        .unwrap();
+
+    timer.observe_duration();
+
+    Ok(response)
+}
+
+async fn prometheus_http_svr_start() {
+    let addr = ([0, 0, 0, 0], 9090).into();
+    info!("Prometheus Listening on http://{}", addr);
+
+    let serve_future = Server::bind(&addr).serve(make_service_fn(|_| async {
+        Ok::<_, hyper::Error>(service_fn(prometheus_http_svr_req))
+    }));
+
+    if let Err(err) = serve_future.await {
+        panic!("Server Error: {}", err);
+    }
+}
+
 fn main() -> std::io::Result<()> {
     thread::spawn(move || {
         let main_thread = MainThread::set_up();
-        let  rt = tokio::runtime::Builder::new_current_thread()
+        let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
             .unwrap();
@@ -127,6 +167,17 @@ fn main() -> std::io::Result<()> {
             main_thread.run_http_server().await;
         })
     });
+
+    thread::spawn(move || {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        rt.block_on(async {
+            prometheus_http_svr_start().await;
+        })
+    });
+
     match run_main() {
         Ok(_) => {}
         Err(error) => {

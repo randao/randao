@@ -26,6 +26,8 @@ use std::{
 use crate::config::CampaignInfo;
 use crate::utils::extract_keypair_from_str;
 use config::Config;
+use prometheus::Counter;
+use prometheus::{labels, opts, register_counter};
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use std::{
@@ -51,7 +53,7 @@ use web3::{
     transports::Http,
     types::{
         Address, Block, BlockId, BlockNumber, Bytes, Transaction, TransactionId,
-         TransactionReceipt, H160, H256, U128, U256, U64,
+        TransactionReceipt, H160, H256, U128, U256, U64,
     },
 };
 
@@ -62,6 +64,15 @@ lazy_static! {
     // total success tasks、total tasks cost time、average tasks cost time queue
     pub(crate) static ref RES_QUEUE_SECS: Arc<Mutex<(u32, u128, Vec::<u128>)>> = Arc::new(Mutex::new((0, 0, Vec::new())));
 
+}
+
+lazy_static! {
+    pub static ref ONGOING_CAMPAIGNS: Counter = register_counter!(opts!(
+        "http_requests_total",
+        "Number of HTTP requests made.",
+        labels! {"handler" => "all",}
+    ))
+    .unwrap();
 }
 
 const PULL_INTERVAL: u64 = 50;
@@ -1133,6 +1144,8 @@ impl WorkThd {
             task_status.step = 2;
             status_file.write(serde_json::to_string(&task_status)?.as_bytes())?;
             status_file.flush()?;
+
+            ONGOING_CAMPAIGNS.inc();
         }
 
         // 3)
@@ -1173,6 +1186,8 @@ impl WorkThd {
             task_status.step = 3;
             status_file.write(serde_json::to_string(&task_status)?.as_bytes())?;
             status_file.flush()?;
+
+            ONGOING_CAMPAIGNS.inc();
         }
 
         // 4)
@@ -1242,6 +1257,8 @@ impl WorkThd {
             if my_bounty <= balance {
                 anyhow::bail!("my_bounty less than balance")
             }
+
+            // ONGOING_CAMPAIGNS.reset();
 
             return Ok((
                 self.uuid.clone(),

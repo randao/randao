@@ -6,7 +6,7 @@ use web3::{
     self,
     api::Eth,
     contract::{tokens::Tokenizable, Contract, Options},
-    ethabi::{ Token},
+    ethabi::Token,
     transports::Http,
     types::{TransactionReceipt, H160, U256},
 };

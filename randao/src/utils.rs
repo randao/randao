@@ -4,18 +4,14 @@ use sha3::{Digest, Keccak256};
 use std::str::FromStr;
 use std::thread::sleep;
 use std::time::Duration;
-use url::Url;
 use web3::contract::Error;
 use web3::types::BlockNumber::Number;
 use web3::types::{Address, H256};
 
-use std::fs::{OpenOptions, File};
-use std::io::{Read, Seek, Write};
-use std::sync::RwLock;
-use std::sync::Mutex;
-use lazy_static::lazy_static;
-use uuid::Uuid;
+use std::fs::{File, OpenOptions};
+use std::io::{Read, Write};
 use std::path::Path;
+use uuid::Uuid;
 
 pub fn log_cpus() -> u64 {
     num_cpus::get() as u64
@@ -130,9 +126,7 @@ fn store_uuid(uuid: &Uuid) -> Result<(), std::io::Error> {
     if !path.exists() {
         File::create(path)?;
     }
-    let mut file = OpenOptions::new()
-        .append(true)
-        .open("uuids.txt")?;
+    let mut file = OpenOptions::new().append(true).open("uuids.txt")?;
 
     write!(file, "{}\n", uuid)?;
     Ok(())
@@ -141,7 +135,10 @@ fn store_uuid(uuid: &Uuid) -> Result<(), std::io::Error> {
 fn remove_uuid(uuid: &Uuid) -> Result<(), std::io::Error> {
     let mut uuids = read_uuids().unwrap();
     uuids.retain(|u| u != uuid);
-    let mut file = OpenOptions::new().write(true).truncate(true).open("uuids.txt")?;
+    let mut file = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open("uuids.txt")?;
     for uuid in uuids {
         write!(file, "{}\n", uuid)?;
     }
@@ -164,12 +161,9 @@ fn read_uuids() -> Result<Vec<Uuid>, std::io::Error> {
     Ok(uuids)
 }
 
-fn delete_all_uuids() -> Result<(), std::io::Error>  {
+fn delete_all_uuids() -> Result<(), std::io::Error> {
     let path = "uuids.txt";
-    let mut file = OpenOptions::new()
-        .write(true)
-        .truncate(true)
-        .open(path)?;
+    let mut file = OpenOptions::new().write(true).truncate(true).open(path)?;
     file.write_all(b"")?;
     Ok(())
 }

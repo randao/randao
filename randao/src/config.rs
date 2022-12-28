@@ -61,7 +61,7 @@ impl CampaignInfo {
 }
 
 impl Detokenize for CampaignInfo {
-    fn from_tokens(mut tokens: Vec<Token>) -> Result<Self, Error> {
+    fn from_tokens(tokens: Vec<Token>) -> Result<Self, Error> {
         if tokens.len() != 1 {
             Err(Error::InvalidOutputType(format!(
                 "Expected single element, got a list: {:?}",
