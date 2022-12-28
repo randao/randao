@@ -14,10 +14,8 @@ use actix_cors::Cors;
 use actix_web::{middleware, post, web, App, HttpServer, Responder};
 use clap::Parser;
 use log::{error, info};
-use nix::libc;
 
 use randao::{config::*, contract::*, error::Error, utils::*, BlockClient, ONGOING_CAMPAIGNS};
-use std::process;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering as Order};
 use std::sync::Mutex;
@@ -60,9 +58,7 @@ impl MainThread {
         let opt = Opts::parse();
         let config: Config = Config::parse_from_file(&opt.config);
         let client = Arc::new(Mutex::new(BlockClient::setup(&config, None)));
-        MainThread {
-            client,
-        }
+        MainThread { client }
     }
 
     pub async fn run_http_server(&self) -> std::io::Result<()> {
@@ -80,11 +76,6 @@ impl MainThread {
         .run()
         .await
     }
-}
-
-extern "C" fn handle_sig(sig_no: libc::c_int) {
-    info!("signal_handler has been runned {:?}", sig_no);
-    STOP.store(true, Order::SeqCst);
 }
 
 lazy_static! {
@@ -138,7 +129,10 @@ async fn prometheus_http_svr_start() {
     }
 }
 
-fn main() -> std::io::Result<()> {
+fn main() -> anyhow::Result<()> {
+    // env::set_var("RUST_LOG", "info,all=info");
+    // env_logger::init();
+
     thread::spawn(move || {
         let main_thread = MainThread::set_up();
         let rt = tokio::runtime::Builder::new_current_thread()
@@ -146,7 +140,7 @@ fn main() -> std::io::Result<()> {
             .build()
             .unwrap();
         rt.block_on(async {
-            main_thread.run_http_server().await;
+            let _ = main_thread.run_http_server().await;
         })
     });
 
@@ -160,15 +154,9 @@ fn main() -> std::io::Result<()> {
         })
     });
 
-    match run_main() {
-        Ok(_) => {}
-        Err(error) => {
-            let e = format!("main thread err:{:?}", error);
-            error!("{}", e);
-            println!("{}", e);
-        }
-    }
-    process::exit(0);
+    run_main().or_else(|e| anyhow::bail!("main thread err:{:?}", e))?;
+
+    Ok(())
 }
 
 fn run_main() -> Result<U256, Error> {
@@ -178,7 +166,7 @@ fn run_main() -> Result<U256, Error> {
     client.contract_setup(
         &config.root_secret.clone(),
         &config.chain.participant.clone(),
-        "Randao_sol_Randao.abi",
+        "randao/Randao_sol_Randao.abi",
         10000000,
         10000000000,
     );
@@ -213,7 +201,10 @@ fn run_main() -> Result<U256, Error> {
         let _guard = MUTEX
             .lock()
             .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?;
-        let _uuids = read_uuids().or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?;
+        let _uuids = read_uuids().or_else(|e| {
+            error!("Error loading UUID file: {:?}", e);
+            Ok(Vec::new())
+        })?;
     }
 
     while !STOP.load(Order::SeqCst) {
@@ -256,7 +247,7 @@ fn run_main() -> Result<U256, Error> {
                     &local_client,
                     local_client.config.clone(),
                 );
-                let (uuid, campaign_id, randao_num, my_bounty) = work_thd.do_task().unwrap();
+                let (uuid, campaign_id, randao_num, _my_bounty) = work_thd.do_task().unwrap();
                 info!("campaign_id:{:?},  randao:{:?}", campaign_id, randao_num);
 
                 {
@@ -277,16 +268,16 @@ fn run_main() -> Result<U256, Error> {
 fn contract_new_campaign(client: &BlockClient) -> Option<TransactionReceipt> {
     let block_num = client.block_number().unwrap();
     let bnum = block_num.as_u64() + 20;
-    let commitBalkline: u128 = 16;
-    let commitDeadline: u128 = 8;
+    let commit_balkline: u128 = 16;
+    let commit_deadline: u128 = 8;
     let deposit: u128 = 1000000000000000000;
-    //let  arg = format!("{:?},{:?},{:?},{:?}", bnum, deposit, commitBalkline, commitDeadline);
+    //let  arg = format!("{:?},{:?},{:?},{:?}", bnum, deposit, commit_balkline, commit_deadline);
 
     let new_data = NewCampaignData {
         bnum: bnum.into(),
         deposit: deposit.into(),
-        commit_balkline: commitBalkline.into(),
-        commit_deadline: commitDeadline.into(),
+        commit_balkline: commit_balkline.into(),
+        commit_deadline: commit_deadline.into(),
     };
     client.contract_new_campaign(1000000, 10000000000, new_data)
 }
@@ -299,21 +290,21 @@ fn test_create_new_campaign() {
     client.contract_setup(
         &config.root_secret.clone(),
         &config.chain.participant.clone(),
-        "Randao_sol_Randao.abi",
+        "randao/Randao_sol_Randao.abi",
         10000000,
         10000000000,
     );
     let block_num = client.block_number().unwrap();
     let bnum = block_num.as_u64() + 10;
-    let commitBalkline: u128 = 8;
-    let commitDeadline: u128 = 4;
+    let commit_balkline: u128 = 8;
+    let commit_deadline: u128 = 4;
     let deposit: u128 = 1000000000000000000;
 
     let new_data = NewCampaignData {
         bnum: bnum.into(),
         deposit: deposit.into(),
-        commit_balkline: commitBalkline.into(),
-        commit_deadline: commitDeadline.into(),
+        commit_balkline: commit_balkline.into(),
+        commit_deadline: commit_deadline.into(),
     };
     client.contract_new_campaign(1000000, 10000000000, new_data);
     let campaign_id = client.contract_campaign_num().unwrap();
@@ -331,21 +322,21 @@ fn test_contract_new_campaign() {
     client.contract_setup(
         &config.root_secret.clone(),
         &config.chain.participant.clone(),
-        "Randao_sol_Randao.abi",
+        "randao/Randao_sol_Randao.abi",
         10000000,
         10000000000,
     );
     let block_num = client.block_number().unwrap();
     let bnum = block_num.as_u64() + 10;
-    let commitBalkline: u128 = 8;
-    let commitDeadline: u128 = 4;
+    let commit_balkline: u128 = 8;
+    let commit_deadline: u128 = 4;
     let deposit: u128 = 1000000000000000000;
 
     let new_data = NewCampaignData {
         bnum: bnum.into(),
         deposit: deposit.into(),
-        commit_balkline: commitBalkline.into(),
-        commit_deadline: commitDeadline.into(),
+        commit_balkline: commit_balkline.into(),
+        commit_deadline: commit_deadline.into(),
     };
     client.contract_new_campaign(1000000, 10000000000, new_data);
     let campaign_id = client.contract_campaign_num().unwrap();

@@ -19,7 +19,6 @@ use secp256k1::SecretKey as SecretKey2;
 use std::{
     fs::OpenOptions,
     io::{Read, Write},
-    ops::Sub,
     path::Path,
 };
 
@@ -1087,12 +1086,13 @@ impl WorkThd {
         if task_status.step == 0 {
             // 2)
             let mut rng = rand::thread_rng();
-            let mut _s = rng.gen::<u128>().to_string();
-            _s.push_str(&rng.gen::<u128>().to_string());
+            let mut _s = U256::zero();
+            _s.0 = rng.gen::<[u64; 4]>();
+            let _s = _s.to_string();
 
             let hs = self
                 .cli
-                .contract_sha_commit(_s.as_str())
+                .contract_sha_commit(&_s)
                 .ok_or(anyhow::format_err!("sha_commit err"))
                 .and_then(|v| {
                     info!(
@@ -1118,6 +1118,24 @@ impl WorkThd {
         }
 
         if task_status.step == 1 {
+            let mut curr_block_number = U256::from(
+                self.cli
+                    .block_number()
+                    .ok_or(anyhow::format_err!("block_number err"))?
+                    .as_u64(),
+            );
+            let balkline = self.campaign_info.bnum - self.campaign_info.commit_balkline;
+            let deadline = self.campaign_info.bnum - self.campaign_info.commit_deadline;
+            while !(curr_block_number >= balkline && curr_block_number <= deadline) {
+                utils::wait_blocks(&self.cli);
+                curr_block_number = U256::from(
+                    self.cli
+                        .block_number()
+                        .ok_or(anyhow::format_err!("block_number err"))?
+                        .as_u64(),
+                );
+            }
+
             let commit_tx_receipt = self
                 .cli
                 .contract_commit(
@@ -1153,10 +1171,22 @@ impl WorkThd {
 
         // 3)
         if task_status.step == 2 {
-            let mut balkline = self.campaign_info.bnum - self.campaign_info.commit_balkline;
-            while balkline > U256::zero() {
+            let mut curr_block_number = U256::from(
+                self.cli
+                    .block_number()
+                    .ok_or(anyhow::format_err!("block_number err"))?
+                    .as_u64(),
+            );
+            let deadline = self.campaign_info.bnum - self.campaign_info.commit_deadline;
+            let bnum = self.campaign_info.bnum;
+            while !(curr_block_number > deadline && curr_block_number < bnum) {
                 utils::wait_blocks(&self.cli);
-                balkline = balkline.sub(U256::from(1));
+                curr_block_number = U256::from(
+                    self.cli
+                        .block_number()
+                        .ok_or(anyhow::format_err!("block_number err"))?
+                        .as_u64(),
+                );
             }
 
             let reveal_tx_receipt = self
@@ -1195,12 +1225,6 @@ impl WorkThd {
 
         // 4)
         if task_status.step == 3 {
-            let mut balkline = self.campaign_info.bnum - self.campaign_info.commit_balkline;
-            while balkline > U256::zero() {
-                utils::wait_blocks(&self.cli);
-                balkline = balkline.sub(U256::from(1));
-            }
-
             let randao_num = self
                 .cli
                 .contract_get_random(self.campaign_id, &self.cfg.secret_key.consumer_secret)
@@ -1229,6 +1253,24 @@ impl WorkThd {
         }
 
         if task_status.step == 4 {
+            let mut curr_block_number = U256::from(
+                self.cli
+                    .block_number()
+                    .ok_or(anyhow::format_err!("block_number err"))?
+                    .as_u64(),
+            );
+            let bnum = self.campaign_info.bnum;
+            println!("--------------bnum: {:?}--------------", bnum);
+            while !(curr_block_number >= bnum) {
+                utils::wait_blocks(&self.cli);
+                curr_block_number = U256::from(
+                    self.cli
+                        .block_number()
+                        .ok_or(anyhow::format_err!("block_number err"))?
+                        .as_u64(),
+                );
+            }
+
             let my_bounty = self
                 .cli
                 .contract_get_my_bounty(self.campaign_id, &self.cfg.secret_key.consumer_secret)

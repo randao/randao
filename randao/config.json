@@ -3,9 +3,9 @@
         "name": "Anvil",
         "chainId": "2152",
         "endpoint":"http://127.0.0.1:8545",
-        "participant": "0x1082BF58Ead23cd5967d4058861f4c4a376Bdb47",
+        "participant": "0x48c224dA3D89F1d224484F49dFD2565910ED29A8",
         "opts": {
-            "randao": "0xA242C7682768c43B079b5B7dA09E2e7c80b1f5e2",
+            "randao": "0x48c224dA3D89F1d224484F49dFD2565910ED29A8",
             "gasLimit": "1000000",
             "maxGasPrice": "100000000000",
             "minGasReserve": "1000000000000000000",
@@ -18,11 +18,11 @@
         }
     },
     "http_listen": "127.0.0.1:3000",
-    "root_secret": "41a303aa45e54905d71e7c9f92fd7d53910fdafc5341a403bd9bb4b970dde5e6",
+    "root_secret": "b501fc5879f214ee8be2832e43955ac0f19e20d1f7e33436d6746ac889dc043d",
     "secret_key": {
-        "founder_secret": "41a303aa45e54905d71e7c9f92fd7d53910fdafc5341a403bd9bb4b970dde5e6",
-        "follower_secret": "79184128aae7b72623503d06ad9fcfa5317f18ed53a6c231496d6457ce378d86",
-        "consumer_secret": "f9dd580d1356c0a7a1b1a2f81c51e3e30aabcfab6a5895e7a0019b3bdf1392f0",
-        "committer_secret": "0bba9ccad0929809e6da7004bff7dce4f89899e2d6c524d671ad935869f98c24"
+        "founder_secret": "b501fc5879f214ee8be2832e43955ac0f19e20d1f7e33436d6746ac889dc043d",
+        "follower_secret": "9c6469da0ea992c1f3d4b635d61cb9d855279490cff6fc1024c58d293371097a",
+        "consumer_secret": "9b1b56f8be67d1f00b18c1822600df35cdb75d3137460126e5c1c7e85be4f09d",
+        "committer_secret": "b45982e7622c5ac0682565f9162f7096b3f11fac5d0647fdbf4bac2ca7afbf72"
     }
 }
