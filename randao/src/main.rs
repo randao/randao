@@ -209,22 +209,14 @@ fn run_main() -> Result<U256, Error> {
     );
 
     let mut handle_vec = Vec::new();
-
-    let guard = MUTEX.lock().unwrap();
-    match read_uuids() {
-        Ok(uuids) => {
-            drop(guard);
-            for uuid in uuids{
-
-            }
-        },
-        Err(err) => {
-            error!("Error loading UUID file: {:?}", err);
-        },
+    {
+        let _guard = MUTEX
+            .lock()
+            .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?;
+        let _uuids = read_uuids().or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?;
     }
 
     while !STOP.load(Order::SeqCst) {
-
         //test
         contract_new_campaign(&client_arc);
         let local_client = client_arc.clone();
@@ -252,9 +244,10 @@ fn run_main() -> Result<U256, Error> {
             let t = thread::spawn(move || {
                 let uuid = Uuid::new_v4().to_string();
 
-                let guard = MUTEX.lock().unwrap();
-                store_uuid(&Uuid::from_str(uuid.as_str().clone()).unwrap()).unwrap();
-                drop(guard);
+                {
+                    let _guard = MUTEX.lock().unwrap();
+                    store_uuid(&Uuid::from_str(uuid.as_str().clone()).unwrap()).unwrap();
+                }
 
                 let work_thd = WorkThd::new(
                     uuid,
@@ -266,9 +259,10 @@ fn run_main() -> Result<U256, Error> {
                 let (uuid, campaign_id, randao_num, my_bounty) = work_thd.do_task().unwrap();
                 info!("campaign_id:{:?},  randao:{:?}", campaign_id, randao_num);
 
-                let guard = MUTEX.lock().unwrap();
-                remove_uuid(&Uuid::from_str(uuid.as_str()).unwrap()).unwrap();
-                drop(guard);
+                {
+                    let _guard = MUTEX.lock().unwrap();
+                    remove_uuid(&Uuid::from_str(uuid.as_str()).unwrap()).unwrap();
+                }
             });
             handle_vec.push(t);
         }
@@ -330,7 +324,7 @@ fn test_create_new_campaign() {
 #[test]
 fn test_contract_new_campaign() {
     use std::path::PathBuf;
-    
+
     let config: PathBuf = PathBuf::from("config.json");
     let config: Config = Config::parse_from_file(&config);
     let mut client = BlockClient::setup(&config, None);

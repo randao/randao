@@ -60,7 +60,6 @@ use web3::{
 const _FRC20_ADDRESS: u64 = 0x1000;
 pub const BLOCK_TIME: u64 = 16;
 
-
 lazy_static! {
     pub(crate) static ref CUR_TASKS: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
     pub(crate) static ref MAX_TASKS: Arc<AtomicU32> = Arc::new(AtomicU32::new(2));
