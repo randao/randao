@@ -7,6 +7,8 @@ use uuid::Uuid;
 mod api;
 mod contract;
 
+use std::fs::create_dir;
+use std::path::Path;
 use std::thread::sleep;
 use std::{sync::Arc, thread, time::Duration};
 
@@ -132,6 +134,13 @@ async fn prometheus_http_svr_start() {
 fn main() -> anyhow::Result<()> {
     // env::set_var("RUST_LOG", "info,all=info");
     // env_logger::init();
+
+    let uuid_path = Path::new("./uuid");
+    if !uuid_path.exists() {
+        create_dir("./uuid")?;
+    } else if !uuid_path.is_dir() {
+        anyhow::bail!("uuid folder is not dir!!!");
+    }
 
     thread::spawn(move || {
         let main_thread = MainThread::set_up();

@@ -1062,19 +1062,23 @@ impl WorkThd {
             _s: String::new(),
         };
 
-        let status_path_str = self.uuid.clone() + ".json";
+        let status_path_str = "./uuid/".to_string() + &self.uuid + ".json";
         let status_path = Path::new(&status_path_str);
 
         let mut status_file;
-        if status_path.exists() && status_path.is_file() {
-            status_file = OpenOptions::new()
-                .read(true)
-                .write(true)
-                .open(&status_path)?;
+        if status_path.exists() {
+            if status_path.is_file() {
+                status_file = OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .open(&status_path)?;
 
-            let mut status_str = String::new();
-            status_file.read_to_string(&mut status_str)?;
-            task_status = serde_json::from_str(&status_str[..])?;
+                let mut status_str = String::new();
+                status_file.read_to_string(&mut status_str)?;
+                task_status = serde_json::from_str(&status_str[..])?;
+            } else {
+                anyhow::bail!("uuid json file is not file!!!");
+            }
         } else {
             status_file = OpenOptions::new()
                 .read(true)
@@ -1260,7 +1264,6 @@ impl WorkThd {
                     .as_u64(),
             );
             let bnum = self.campaign_info.bnum;
-            println!("--------------bnum: {:?}--------------", bnum);
             while !(curr_block_number >= bnum) {
                 utils::wait_blocks(&self.cli);
                 curr_block_number = U256::from(

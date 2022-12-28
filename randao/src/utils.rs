@@ -93,11 +93,11 @@ pub fn check_campaign_info(
 }
 
 pub fn store_uuid(uuid: &Uuid) -> Result<(), std::io::Error> {
-    let path = Path::new("uuids.txt");
+    let path = Path::new("./uuid/uuids.txt");
     if !path.exists() {
         File::create(path)?;
     }
-    let mut file = OpenOptions::new().append(true).open("uuids.txt")?;
+    let mut file = OpenOptions::new().append(true).open("./uuid/uuids.txt")?;
 
     write!(file, "{}\n", uuid)?;
     Ok(())
@@ -109,7 +109,7 @@ pub fn remove_uuid(uuid: &Uuid) -> Result<(), std::io::Error> {
     let mut file = OpenOptions::new()
         .write(true)
         .truncate(true)
-        .open("uuids.txt")?;
+        .open("./uuid/uuids.txt")?;
     for uuid in uuids {
         write!(file, "{}\n", uuid)?;
     }
@@ -117,7 +117,7 @@ pub fn remove_uuid(uuid: &Uuid) -> Result<(), std::io::Error> {
 }
 
 pub fn read_uuids() -> Result<Vec<Uuid>, std::io::Error> {
-    let mut file = File::open("uuids.txt")?;
+    let mut file = File::open("./uuid/uuids.txt")?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
 
@@ -137,7 +137,7 @@ pub fn read_uuids() -> Result<Vec<Uuid>, std::io::Error> {
 }
 
 pub fn delete_all_uuids() -> Result<(), std::io::Error> {
-    let path = "uuids.txt";
+    let path = "./uuid/uuids.txt";
     let mut file = OpenOptions::new().write(true).truncate(true).open(path)?;
     file.write_all(b"")?;
     Ok(())
