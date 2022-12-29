@@ -59,7 +59,7 @@ async fn exit() -> impl Responder {
 impl MainThread {
     pub fn set_up() -> Self {
         let current_dir = env::current_dir().unwrap();
-        let config_path = Path::new(&current_dir).join("config.json");
+        let config_path = Path::new(&current_dir).join("randao/config.json");
         let config: Config = Config::parse_from_file(&config_path);
         let client = Arc::new(Mutex::new(BlockClient::setup(&config, None)));
         MainThread { client }
@@ -172,10 +172,10 @@ fn main() -> anyhow::Result<()> {
 
 fn run_main() -> Result<U256, Error> {
     let current_dir = env::current_dir().unwrap();
-    let config_path = Path::new(&current_dir).join("config.json");
+    let config_path = Path::new(&current_dir).join("randao/config.json");
     let config: Config = Config::parse_from_file(&config_path);
     let mut client = BlockClient::setup(&config, None);
-    let file_path = Path::new(&current_dir).join("Randao_sol_Randao.abi");
+    let file_path = Path::new(&current_dir).join("randao/Randao_sol_Randao.abi");
     let abi_path_str = file_path.to_str().unwrap();
     println!("abi_path_str:{:?}", abi_path_str);
     client.contract_setup(
@@ -211,15 +211,16 @@ fn run_main() -> Result<U256, Error> {
         client_arc.config.chain.opts.randao
     );
 
-    let mut handle_vec = Vec::new();
+    let mut handle_vec: Vec<std::thread::JoinHandle<Result<(), Error>>> = Vec::new();
     let max_thds_cnt: usize = num_cpus::get() * 2;
     let mut check_cnt: u8 = 0;
 
+    let mut uuids = Vec::new();
     {
         let _guard = MUTEX
             .lock()
             .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?;
-        let _uuids = read_uuids().or_else(|e| {
+        uuids = read_uuids().or_else(|e| {
             error!("Error loading UUID file: {:?}", e);
             Ok(Vec::new())
         })?;
@@ -251,28 +252,45 @@ fn run_main() -> Result<U256, Error> {
             if !check_campaign_info(&local_client, &info, &local_client.config) {
                 continue; //return Err(Error::CheckCampaignsInfoErr);
             }
-            let t = thread::spawn(move || {
-                let uuid = Uuid::new_v4().to_string();
 
-                {
-                    let _guard = MUTEX.lock().unwrap();
+            let mut uuid = Uuid::new_v4().to_string();
+            let is_new_uuid;
+            {
+                let _guard = MUTEX.lock().unwrap();
+                if uuids.is_empty() {
                     store_uuid(&Uuid::from_str(uuid.as_str().clone()).unwrap()).unwrap();
+                    is_new_uuid = true;
+                } else {
+                    uuid = uuids.pop().unwrap().to_string();
+                    is_new_uuid = false;
                 }
+            }
 
-                let work_thd = WorkThd::new(
-                    uuid,
-                    campaign_id.clone(),
-                    info,
-                    &local_client,
-                    local_client.config.clone(),
-                );
-                let (uuid, campaign_id, randao_num, _my_bounty) = work_thd.do_task().unwrap();
+            let t = thread::spawn(move || {
+                let mut work_thd;
+                if is_new_uuid {
+                    work_thd = WorkThd::new(
+                        uuid,
+                        campaign_id.clone(),
+                        info,
+                        &local_client,
+                        local_client.config.clone(),
+                    );
+                } else {
+                    work_thd =
+                        WorkThd::new_from_uuid(uuid, &local_client, local_client.config.clone());
+                }
+                let (uuid, campaign_id, randao_num, _my_bounty) = work_thd
+                    .do_task()
+                    .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?;
                 info!("campaign_id:{:?},  randao:{:?}", campaign_id, randao_num);
 
                 {
                     let _guard = MUTEX.lock().unwrap();
-                    remove_uuid(&Uuid::from_str(uuid.as_str()).unwrap()).unwrap();
+                    remove_uuid(&Uuid::from_str(uuid.as_str()).unwrap())
+                        .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?
                 }
+                Ok(())
             });
             handle_vec.push(t);
 
@@ -283,7 +301,7 @@ fn run_main() -> Result<U256, Error> {
                         .pop()
                         .unwrap()
                         .join()
-                        .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?;
+                        .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))??;
                 }
                 check_cnt = 0;
             }
@@ -292,7 +310,7 @@ fn run_main() -> Result<U256, Error> {
     }
     for t in handle_vec {
         t.join()
-            .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?;
+            .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))??;
     }
     return Ok(U256::from(1));
 }
@@ -442,7 +460,7 @@ fn test_contract_new_campaign() {
     println!("my_bounty :{:?}", my_bounty);
 
     let uuid = Uuid::new_v4().to_string();
-    let work_thd = WorkThd::new(uuid, campaign, info, &client, config);
+    let mut work_thd = WorkThd::new(uuid, campaign, info, &client, config);
     let (uuid, campaign_id, randao_num, my_bounty) = work_thd.do_task().unwrap();
 
     println!(

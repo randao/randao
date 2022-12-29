@@ -20,7 +20,7 @@ use reqwest::{Client, Url};
 use secp256k1::SecretKey as SecretKey2;
 use std::{
     fs::OpenOptions,
-    io::{Read, Write},
+    io::{Read, Seek, Write},
     path::Path,
 };
 
@@ -1045,12 +1045,14 @@ struct TaskStatus {
     hs: Vec<u8>,
     randao_num: U256,
     _s: String,
+    campaign_id: u128,
+    campaign_info: CampaignInfo,
 }
 
 pub struct WorkThd {
     uuid: String,
-    campaign_id: u128,
-    campaign_info: CampaignInfo,
+    campaign_id: Option<u128>,
+    campaign_info: Option<CampaignInfo>,
     cli: BlockClient,
     cfg: Config,
 }
@@ -1066,19 +1068,32 @@ impl WorkThd {
         // 1)
         WorkThd {
             uuid: uuid,
-            campaign_id: campaign_id,
-            campaign_info: campaign_info,
+            campaign_id: Some(campaign_id),
+            campaign_info: Some(campaign_info),
             cli: cli.clone(),
             cfg: cfg,
         }
     }
 
-    pub fn do_task(&self) -> anyhow::Result<(String, u128, U256, U256)> {
+    pub fn new_from_uuid(uuid: String, cli: &BlockClient, cfg: Config) -> WorkThd {
+        // 1)
+        WorkThd {
+            uuid: uuid,
+            campaign_id: None,
+            campaign_info: None,
+            cli: cli.clone(),
+            cfg: cfg,
+        }
+    }
+
+    pub fn do_task(&mut self) -> anyhow::Result<(String, u128, U256, U256)> {
         let mut task_status = TaskStatus {
             step: 0,
             hs: Vec::new(),
             randao_num: U256::zero(),
             _s: String::new(),
+            campaign_id: 0u128,
+            campaign_info: Default::default(),
         };
 
         let status_path_str = "./uuid/".to_string() + &self.uuid + ".json";
@@ -1086,6 +1101,10 @@ impl WorkThd {
 
         let mut status_file;
         if status_path.exists() {
+            if self.campaign_id.is_some() || self.campaign_info.is_some() {
+                anyhow::bail!("uuid json exists, but call WorkThd::new() init!!!");
+            }
+
             if status_path.is_file() {
                 status_file = OpenOptions::new()
                     .read(true)
@@ -1099,6 +1118,16 @@ impl WorkThd {
                 anyhow::bail!("uuid json file is not file!!!");
             }
         } else {
+            if self.campaign_id.is_none() || self.campaign_info.is_none() {
+                anyhow::bail!("uuid json not exists, but call WorkThd::new_from_uuid() init!!!");
+            }
+
+            task_status.campaign_id = self.campaign_id.unwrap();
+            std::mem::swap(
+                &mut task_status.campaign_info,
+                self.campaign_info.as_mut().unwrap(),
+            );
+
             status_file = OpenOptions::new()
                 .read(true)
                 .write(true)
@@ -1120,14 +1149,14 @@ impl WorkThd {
                 .and_then(|v| {
                     info!(
                         "sha_commit succeed, campaignID={:?}, hs={:?}",
-                        self.campaign_id, v
+                        task_status.campaign_id, v
                     );
                     Ok(v)
                 })
                 .or_else(|e| {
                     error!(
                         "sha_commit failed, campaignID={:?}, err={:?}",
-                        self.campaign_id,
+                        task_status.campaign_id,
                         e.to_string()
                     );
                     Err(e)
@@ -1136,6 +1165,8 @@ impl WorkThd {
             task_status.step = 1;
             task_status.hs = hs;
             task_status._s = _s;
+
+            status_file.rewind()?;
             status_file.write(serde_json::to_string(&task_status)?.as_bytes())?;
             status_file.flush()?;
         }
@@ -1147,8 +1178,10 @@ impl WorkThd {
                     .ok_or(anyhow::format_err!("block_number err"))?
                     .as_u64(),
             );
-            let balkline = self.campaign_info.bnum - self.campaign_info.commit_balkline;
-            let deadline = self.campaign_info.bnum - self.campaign_info.commit_deadline;
+            let balkline =
+                task_status.campaign_info.bnum - task_status.campaign_info.commit_balkline;
+            let deadline =
+                task_status.campaign_info.bnum - task_status.campaign_info.commit_deadline;
             while !(curr_block_number >= balkline && curr_block_number <= deadline) {
                 utils::wait_blocks(&self.cli);
                 curr_block_number = U256::from(
@@ -1162,8 +1195,8 @@ impl WorkThd {
             let commit_tx_receipt = self
                 .cli
                 .contract_commit(
-                    self.campaign_id,
-                    self.campaign_info.deposit.as_u128(),
+                    task_status.campaign_id,
+                    task_status.campaign_info.deposit.as_u128(),
                     &self.cli.randao_contract.sec_key,
                     task_status.hs.clone(),
                 )
@@ -1171,14 +1204,14 @@ impl WorkThd {
                 .and_then(|v| {
                     info!(
                         "Commit succeed, campaignID={:?}, tx={:?} gasPrice={:?}",
-                        self.campaign_id, v.transaction_hash, v.gas_used
+                        task_status.campaign_id, v.transaction_hash, v.gas_used
                     );
                     Ok(v)
                 })
                 .or_else(|e| {
                     error!(
                         "Commit failed, campaignID={:?}, err={:?}",
-                        self.campaign_id,
+                        task_status.campaign_id,
                         e.to_string()
                     );
                     Err(e)
@@ -1186,6 +1219,8 @@ impl WorkThd {
             info!("commit transaction receipt :{:?}", commit_tx_receipt);
 
             task_status.step = 2;
+
+            status_file.rewind()?;
             status_file.write(serde_json::to_string(&task_status)?.as_bytes())?;
             status_file.flush()?;
 
@@ -1200,8 +1235,9 @@ impl WorkThd {
                     .ok_or(anyhow::format_err!("block_number err"))?
                     .as_u64(),
             );
-            let deadline = self.campaign_info.bnum - self.campaign_info.commit_deadline;
-            let bnum = self.campaign_info.bnum;
+            let deadline =
+                task_status.campaign_info.bnum - task_status.campaign_info.commit_deadline;
+            let bnum = task_status.campaign_info.bnum;
             while !(curr_block_number > deadline && curr_block_number < bnum) {
                 utils::wait_blocks(&self.cli);
                 curr_block_number = U256::from(
@@ -1215,8 +1251,8 @@ impl WorkThd {
             let reveal_tx_receipt = self
                 .cli
                 .contract_reveal(
-                    self.campaign_id,
-                    self.campaign_info.deposit.as_u128(),
+                    task_status.campaign_id,
+                    task_status.campaign_info.deposit.as_u128(),
                     &self.cli.randao_contract.sec_key,
                     task_status._s.as_str(),
                 )
@@ -1224,14 +1260,14 @@ impl WorkThd {
                 .and_then(|v| {
                     info!(
                         "Reveal succeed, campaignID={:?}, tx={:?} gasPrice={:?}",
-                        self.campaign_id, v.transaction_hash, v.gas_used
+                        task_status.campaign_id, v.transaction_hash, v.gas_used
                     );
                     Ok(v)
                 })
                 .or_else(|e| {
                     error!(
                         "Reveal failed, fines={:?}, campaignID={:?}, err={:?}",
-                        self.campaign_id,
+                        task_status.campaign_id,
                         3,
                         e.to_string()
                     );
@@ -1240,6 +1276,8 @@ impl WorkThd {
             info!("reveal transaction receipt :{:?}", reveal_tx_receipt);
 
             task_status.step = 3;
+
+            status_file.rewind()?;
             status_file.write(serde_json::to_string(&task_status)?.as_bytes())?;
             status_file.flush()?;
 
@@ -1254,7 +1292,7 @@ impl WorkThd {
                     .ok_or(anyhow::format_err!("block_number err"))?
                     .as_u64(),
             );
-            let bnum = self.campaign_info.bnum;
+            let bnum = task_status.campaign_info.bnum;
             while !(curr_block_number >= bnum) {
                 utils::wait_blocks(&self.cli);
                 curr_block_number = U256::from(
@@ -1267,19 +1305,19 @@ impl WorkThd {
 
             let randao_num = self
                 .cli
-                .contract_get_random(self.campaign_id, &self.cli.randao_contract.sec_key)
+                .contract_get_random(task_status.campaign_id, &self.cli.randao_contract.sec_key)
                 .ok_or(anyhow::format_err!("get_random err"))
                 .and_then(|v| {
                     info!(
                         "get Random succeed, campaignID={:?}, randao num={:?}",
-                        self.campaign_id, v
+                        task_status.campaign_id, v
                     );
                     Ok(v)
                 })
                 .or_else(|e| {
                     error!(
                         "get Random failed, campaignID={:?}, err={:?}",
-                        self.campaign_id,
+                        task_status.campaign_id,
                         e.to_string()
                     );
                     Err(e)
@@ -1288,6 +1326,7 @@ impl WorkThd {
             task_status.step = 4;
             task_status.randao_num = randao_num;
 
+            status_file.rewind()?;
             status_file.write(serde_json::to_string(&task_status)?.as_bytes())?;
             status_file.flush()?;
         }
@@ -1295,19 +1334,19 @@ impl WorkThd {
         if task_status.step == 4 {
             let my_bounty = self
                 .cli
-                .contract_get_my_bounty(self.campaign_id, &self.cli.randao_contract.sec_key)
+                .contract_get_my_bounty(task_status.campaign_id, &self.cli.randao_contract.sec_key)
                 .ok_or(anyhow::format_err!("get_my_bounty err"))
                 .and_then(|v| {
                     info!(
                         "Bounty claimed, campaignID={:?}, bounty={:?}",
-                        self.campaign_id, v
+                        task_status.campaign_id, v
                     );
                     Ok(v)
                 })
                 .or_else(|e| {
                     error!(
                         "Get bounty failed, campaignID={:?}, err={:?}",
-                        self.campaign_id,
+                        task_status.campaign_id,
                         e.to_string()
                     );
                     Err(e)
@@ -1315,13 +1354,15 @@ impl WorkThd {
             info!("my_bounty :{:?}", my_bounty);
 
             task_status.step = 5;
+
+            status_file.rewind()?;
             status_file.write(serde_json::to_string(&task_status)?.as_bytes())?;
             status_file.flush()?;
             std::mem::drop(status_file);
 
             fs::remove_file(&status_path)?;
 
-            if my_bounty < self.campaign_info.deposit {
+            if my_bounty < task_status.campaign_info.deposit {
                 anyhow::bail!("my_bounty less than deposit");
             }
 
@@ -1329,7 +1370,7 @@ impl WorkThd {
 
             return Ok((
                 self.uuid.clone(),
-                self.campaign_id,
+                task_status.campaign_id,
                 task_status.randao_num,
                 my_bounty,
             ));

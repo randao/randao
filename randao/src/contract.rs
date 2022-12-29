@@ -148,7 +148,6 @@ impl RandaoContract {
             .await;
         match result {
             Ok(_) => {
-                println!("follow ok");
                 let opt = Options {
                     gas: Some(gas.into()),
                     gas_price: Some(gas_price.into()),
@@ -159,6 +158,7 @@ impl RandaoContract {
                 let result = contract
                     .signed_call_with_confirmations("follow", token_id, opt, 1, &secretkey)
                     .await?;
+                println!("follow ok");
                 Ok(result)
             }
             Err(e) => {
@@ -268,7 +268,6 @@ impl RandaoContract {
             .await;
         match result {
             Ok(_) => {
-                println!("commit ok");
                 let opt = Options {
                     gas: Some(self.gas.into()),
                     gas_price: Some(self.gas_price.into()),
@@ -278,6 +277,7 @@ impl RandaoContract {
                 let result = contract
                     .signed_call_with_confirmations("commit", token.clone(), opt, 1, &secretkey)
                     .await?;
+                println!("commit ok");
                 Ok(result)
             }
             Err(e) => {
@@ -317,10 +317,10 @@ impl RandaoContract {
             .await;
         match result {
             Ok(_) => {
-                println!("reveal ok");
                 let result = contract
                     .signed_call_with_confirmations("reveal", token.clone(), opt, 1, &secretkey)
                     .await?;
+                println!("reveal ok");
                 Ok(result)
             }
             Err(e) => {
@@ -356,7 +356,6 @@ impl RandaoContract {
             .await;
         match result {
             Ok(_) => {
-                println!("refundBounty ok");
                 let result = contract
                     .signed_call_with_confirmations(
                         "refundBounty",
@@ -366,6 +365,7 @@ impl RandaoContract {
                         &secretkey,
                     )
                     .await?;
+                println!("refundBounty ok");
                 Ok(result)
             }
             Err(e) => {
@@ -402,10 +402,10 @@ impl RandaoContract {
             .await;
         match result {
             Ok(_) => {
-                println!("get_campaign_query ok");
                 let result = contract
                     .query(fun_name, token.clone(), root_addr, opt, None)
                     .await?;
+                println!("get_campaign_query ok");
                 Ok(result)
             }
             Err(e) => {
