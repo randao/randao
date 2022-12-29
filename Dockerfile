@@ -29,4 +29,7 @@ RUN git clone https://github.com/FindoraNetwork/randao.git -b integration_test \
   && cp /root/randao/target/release/randao /bin/ \
   && cp /root/randao/randao/config.json /root/
 
+COPY ./docker-run.sh /root/
+RUN chmod a+x /root/docker-run.sh
+
 ENTRYPOINT ["/bin/bash", "/root/docker-run.sh"]
