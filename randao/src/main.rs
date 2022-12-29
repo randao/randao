@@ -35,6 +35,8 @@ use prometheus::{labels, opts, register_gauge, register_histogram_vec};
 
 use crate::api::ApiResult;
 
+const CHECK_CNT: u8 = 5;
+
 lazy_static! {
     static ref STOP: AtomicBool = AtomicBool::new(false);
     static ref MUTEX: Mutex<()> = Mutex::new(());
@@ -176,7 +178,7 @@ fn run_main() -> Result<U256, Error> {
     let mut client = BlockClient::setup(&config, None);
     let file_path = Path::new(&current_dir).join("Randao_sol_Randao.abi");
     let abi_path_str = file_path.to_str().unwrap();
-    println!("abi_path_str:{:?}",abi_path_str);
+    println!("abi_path_str:{:?}", abi_path_str);
     client.contract_setup(
         &config.root_secret.clone(),
         &config.chain.opts.randao.clone(),
@@ -211,6 +213,9 @@ fn run_main() -> Result<U256, Error> {
     );
 
     let mut handle_vec = Vec::new();
+    let max_thds_cnt: usize = num_cpus::get() * 2;
+    let mut check_cnt: u8 = 0;
+
     {
         let _guard = MUTEX
             .lock()
@@ -239,7 +244,8 @@ fn run_main() -> Result<U256, Error> {
                 .contract_get_campaign_info(campaign_id)
                 .unwrap();
             if local_client.config.chain.opts.max_campaigns
-                <= i32::try_from(new_campaign_num).or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?
+                <= i32::try_from(new_campaign_num)
+                    .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?
             {
                 break; //return Err(Error::GetNumCampaignsErr);
             }
@@ -261,7 +267,7 @@ fn run_main() -> Result<U256, Error> {
                     &local_client,
                     local_client.config.clone(),
                 );
-                let (uuid, campaign_id, randao_num, _my_bounty) =  work_thd.do_task().unwrap();
+                let (uuid, campaign_id, randao_num, _my_bounty) = work_thd.do_task().unwrap();
                 info!("campaign_id:{:?},  randao:{:?}", campaign_id, randao_num);
 
                 {
@@ -270,11 +276,24 @@ fn run_main() -> Result<U256, Error> {
                 }
             });
             handle_vec.push(t);
+
+            check_cnt += 1;
+            if check_cnt == CHECK_CNT {
+                while handle_vec.len() > max_thds_cnt {
+                    handle_vec
+                        .pop()
+                        .unwrap()
+                        .join()
+                        .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?;
+                }
+                check_cnt = 0;
+            }
         }
         sleep(Duration::from_millis(5000));
     }
     for t in handle_vec {
-        t.join().unwrap();
+        t.join()
+            .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?;
     }
     return Ok(U256::from(1));
 }
@@ -300,8 +319,8 @@ fn contract_new_campaign(client: &BlockClient) -> Option<TransactionReceipt> {
 
 #[test]
 fn test_create_new_campaign() {
+    use serde_json::{from_str, Value};
     use std::fs;
-    use serde_json::{Value, from_str};
 
     let config: std::path::PathBuf = std::path::PathBuf::from("config.json");
     let config: Config = Config::parse_from_file(&config);
@@ -352,9 +371,9 @@ fn test_create_new_campaign() {
 
 #[test]
 fn test_contract_new_campaign() {
-    use std::path::PathBuf;
+    use serde_json::{from_str, Value};
     use std::fs;
-    use serde_json::{Value, from_str};
+    use std::path::PathBuf;
 
     let current_dir = env::current_dir().unwrap();
     let file_path = Path::new(&current_dir).join("src/test-keys/test-key.json");
@@ -398,13 +417,7 @@ fn test_contract_new_campaign() {
     let campaign = campaign_id.as_u128() - 1;
     assert!(campaign >= 0, "Campaign ID must be greater than 0");
 
-    let result = client.contract_follow(
-        1000000,
-        10000000000,
-        campaign,
-        deposit,
-        follower,
-    );
+    let result = client.contract_follow(1000000, 10000000000, campaign, deposit, follower);
     assert!(result.is_some());
 
     for _ in 0..1 {

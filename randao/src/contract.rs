@@ -358,15 +358,23 @@ impl RandaoContract {
             Ok(_) => {
                 println!("refundBounty ok");
                 let result = contract
-                    .signed_call_with_confirmations("refundBounty", token.clone(), opt, 1, &secretkey)
+                    .signed_call_with_confirmations(
+                        "refundBounty",
+                        token.clone(),
+                        opt,
+                        1,
+                        &secretkey,
+                    )
                     .await?;
                 Ok(result)
             }
             Err(e) => {
-                let info = self
-                    .get_campaign_info(eth, campaign_id, sec_key)
-                    .await?;
-                println!("refundBounty erro:{:?} , and info :{:?}", handle_error(e), info);
+                let info = self.get_campaign_info(eth, campaign_id, sec_key).await?;
+                println!(
+                    "refundBounty erro:{:?} , and info :{:?}",
+                    handle_error(e),
+                    info
+                );
                 Err(web3::contract::Error::InterfaceUnsupported)
             }
         }

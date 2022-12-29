@@ -43,7 +43,6 @@ use std::{
     time::Duration,
 };
 use tokio::{runtime::Runtime, sync::mpsc::Receiver, sync::Mutex};
-use web3::types::BlockNumber::Number;
 use web3::{
     self,
     api::Eth,
