@@ -1,39 +1,38 @@
 #[macro_use]
 extern crate serde;
 
-mod config;
-use randao::WorkThd;
-use uuid::Uuid;
 mod api;
-mod contract;
-
-use std::fs::create_dir;
-use std::path::Path;
-use std::thread::sleep;
-use std::{env, sync::Arc, thread, time::Duration};
 
 use actix_cors::Cors;
 use actix_web::{middleware, post, web, App, HttpServer, Responder};
-use clap::Parser;
-use log::{error, info};
-
-use randao::{config::*, contract::*, error::Error, utils::*, BlockClient, ONGOING_CAMPAIGNS};
-use std::str::FromStr;
-use std::sync::atomic::{AtomicBool, Ordering as Order};
-use std::sync::Mutex;
-use web3::types::{TransactionReceipt, U256};
-
+use api::ApiResult;
 use hyper::{
     header::CONTENT_TYPE,
     service::{make_service_fn, service_fn},
     Body, Request, Response, Server,
 };
-use prometheus::{Encoder, Gauge, HistogramVec, TextEncoder};
-
 use lazy_static::lazy_static;
-use prometheus::{labels, opts, register_gauge, register_histogram_vec};
-
-use crate::api::ApiResult;
+use log::{error, info};
+use prometheus::{
+    labels, opts, register_gauge, register_histogram_vec, Encoder, Gauge, HistogramVec, TextEncoder,
+};
+use randao::{
+    config::*, contract::*, error::Error, utils::*, BlockClient, WorkThd, ONGOING_CAMPAIGNS,
+};
+use std::{
+    env,
+    fs::create_dir,
+    path::Path,
+    str::FromStr,
+    sync::{
+        atomic::{AtomicBool, Ordering as Order},
+        Arc, Mutex,
+    },
+    thread::{self, sleep},
+    time::Duration,
+};
+use uuid::Uuid;
+use web3::types::{TransactionReceipt, U256};
 
 const CHECK_CNT: u8 = 5;
 

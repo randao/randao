@@ -2,10 +2,12 @@ pub mod config;
 pub mod contract;
 pub mod error;
 pub mod utils;
+
 use crate::{
+    config::CampaignInfo,
     contract::{NewCampaignData, RandaoContract},
     error::{Error, InternalError},
-    utils::{extract_keypair_from_config, handle_error},
+    utils::{extract_keypair_from_config, extract_keypair_from_str, handle_error},
 };
 use anyhow::bail;
 use bip0039::{Count, Language, Mnemonic};
@@ -22,8 +24,6 @@ use std::{
     path::Path,
 };
 
-use crate::config::CampaignInfo;
-use crate::utils::extract_keypair_from_str;
 use config::Config;
 use prometheus::{labels, opts};
 use prometheus::{register_gauge, Gauge};

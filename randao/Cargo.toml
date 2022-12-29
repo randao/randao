@@ -42,3 +42,7 @@ rc = "0.1.1"
 hyper = { version = "0.14.23", features = ["server", "http1", "tcp"] }
 tokio = { version = "1.23.0", features = ["macros", "rt-multi-thread"] }
 num_cpus = "1.15.0"
+
+[[bin]]
+name = "randao"
+path = "src/main.rs"
