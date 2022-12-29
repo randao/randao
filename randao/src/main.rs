@@ -292,7 +292,10 @@ fn contract_new_campaign(client: &BlockClient) -> Option<TransactionReceipt> {
         commit_balkline: commit_balkline.into(),
         commit_deadline: commit_deadline.into(),
     };
-    client.contract_new_campaign(1000000, 10000000000, new_data)
+    println!("----------------------contract_new_campaign begin----------------------");
+    let res = client.contract_new_campaign(1000000, 10000000000, new_data);
+    println!("----------------------contract_new_campaign end----------------------");
+    res
 }
 
 #[test]

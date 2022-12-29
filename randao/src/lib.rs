@@ -1075,13 +1075,6 @@ impl WorkThd {
     }
 
     pub fn do_task(&self) -> anyhow::Result<(String, u128, U256, U256)> {
-        let block_number = self
-            .cli
-            .block_number()
-            .ok_or(anyhow::format_err!("block_number err"))?;
-        let (_, root_addr) = extract_keypair_from_str(self.cli.config.root_secret.clone());
-        let balance = self.cli.balance(root_addr, Some(Number(block_number)));
-
         let mut task_status = TaskStatus {
             step: 0,
             hs: Vec::new(),
@@ -1172,7 +1165,7 @@ impl WorkThd {
                 .contract_commit(
                     self.campaign_id,
                     self.campaign_info.deposit.as_u128(),
-                    &self.cfg.secret_key.consumer_secret,
+                    &self.cli.randao_contract.sec_key,
                     task_status.hs.clone(),
                 )
                 .ok_or(anyhow::format_err!("commit err"))
@@ -1225,7 +1218,7 @@ impl WorkThd {
                 .contract_reveal(
                     self.campaign_id,
                     self.campaign_info.deposit.as_u128(),
-                    &self.cfg.secret_key.consumer_secret,
+                    &self.cli.randao_contract.sec_key,
                     task_status._s.as_str(),
                 )
                 .ok_or(anyhow::format_err!("reveal err"))
@@ -1272,10 +1265,10 @@ impl WorkThd {
                         .as_u64(),
                 );
             }
-            
+
             let randao_num = self
                 .cli
-                .contract_get_random(self.campaign_id, &self.cfg.secret_key.consumer_secret)
+                .contract_get_random(self.campaign_id, &self.cli.randao_contract.sec_key)
                 .ok_or(anyhow::format_err!("get_random err"))
                 .and_then(|v| {
                     info!(
@@ -1303,7 +1296,7 @@ impl WorkThd {
         if task_status.step == 4 {
             let my_bounty = self
                 .cli
-                .contract_get_my_bounty(self.campaign_id, &self.cfg.secret_key.consumer_secret)
+                .contract_get_my_bounty(self.campaign_id, &self.cli.randao_contract.sec_key)
                 .ok_or(anyhow::format_err!("get_my_bounty err"))
                 .and_then(|v| {
                     info!(
@@ -1329,8 +1322,8 @@ impl WorkThd {
 
             fs::remove_file(&status_path)?;
 
-            if my_bounty <= balance {
-                anyhow::bail!("my_bounty less than balance")
+            if my_bounty < self.campaign_info.deposit {
+                anyhow::bail!("my_bounty less than deposit");
             }
 
             ONGOING_CAMPAIGNS.dec();
