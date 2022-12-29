@@ -25,8 +25,8 @@ RUN cargo install cargo-tarpaulin
 RUN git clone https://github.com/FindoraNetwork/randao.git -b integration_test \
   && mv randao /root/ \
   && cd /root/randao  \
-  && cargo build --release
-COPY /root/randao/target/release/randao /bin/
-COPY /root/randao/randao/config.json /root/
+  && cargo build --release \
+  && cp /root/randao/target/release/randao /bin/ \
+  && cp /root/randao/randao/config.json /root/
 
-ENTRYPOINT ["/bin/randao", "--config", "/root/config.json"]
+ENTRYPOINT ["/bin/bash", "/root/docker-run.sh"]
