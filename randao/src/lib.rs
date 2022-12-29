@@ -644,6 +644,33 @@ impl BlockClient {
         })
     }
 
+    pub fn contract_refund_bounty(
+        &self,
+        campaign_id: u128,
+        sec_key: &str,
+    ) -> Option<TransactionReceipt> {
+        self.rt.block_on(async {
+            let eth = (*self.eth.clone()).clone();
+            let result = self
+                .randao_contract
+                .refund_bounty(eth, campaign_id, sec_key)
+                .await;
+            let value = match result {
+                Ok(v) => {
+                    if v.status.unwrap() == U64::zero() {
+                        println!("contract_refund_bounty receipt:{:?}", v);
+                    }
+                    Some(v)
+                }
+                Err(e) => {
+                    println!("call contract_refund_bounty failed: {:?}", e);
+                    None
+                }
+            };
+            value
+        })
+    }
+
     pub fn contract_get_my_bounty(&self, campaign_id: u128, commit_sec_key: &str) -> Option<U256> {
         self.rt.block_on(async {
             let eth = (*self.eth.clone()).clone();

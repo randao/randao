@@ -96,7 +96,7 @@ impl RandaoContract {
                 campaign_info = data.clone();
             }
             Err(e) => {
-                println!("get_campaign_query erro:{:?}", handle_error(e));
+                println!("get_campaign_info erro:{:?}", handle_error(e));
             }
         }
         Ok(campaign_info)
@@ -234,7 +234,7 @@ impl RandaoContract {
                 println!("sha_commit: {:?}", encode_hash);
             }
             Err(e) => {
-                println!("get_campaign_query erro:{:?}", handle_error(e));
+                println!("sha_commit erro:{:?}", handle_error(e));
             }
         }
         Ok(encode_hash)
@@ -328,6 +328,45 @@ impl RandaoContract {
                     .get_campaign_info(eth, campaign_id, commit_sec_key)
                     .await?;
                 println!("reveal erro:{:?} , and info :{:?}", handle_error(e), info);
+                Err(web3::contract::Error::InterfaceUnsupported)
+            }
+        }
+    }
+
+    pub async fn refund_bounty(
+        &self,
+        eth: Eth<Http>,
+        campaign_id: u128,
+        sec_key: &str,
+    ) -> web3::contract::Result<TransactionReceipt> {
+        let abi = fs::read(&self.abi_path).unwrap();
+        let contr_addr: H160 = self.contract_addr.parse().unwrap();
+        let contract = Contract::from_json(eth.clone(), contr_addr, &abi)?;
+        let secretkey = SecretKey2::from_str(sec_key).unwrap();
+        let (_root_sk, root_addr) = extract_keypair_from_str(sec_key.to_string());
+        let opt = Options {
+            gas: Some(self.gas.into()),
+            gas_price: Some(self.gas_price.into()),
+            ..Default::default()
+        };
+        let token = campaign_id.into_token();
+
+        let result = contract
+            .estimate_gas("refundBounty", token.clone(), root_addr, opt.clone())
+            .await;
+        match result {
+            Ok(_) => {
+                println!("refundBounty ok");
+                let result = contract
+                    .signed_call_with_confirmations("refundBounty", token.clone(), opt, 1, &secretkey)
+                    .await?;
+                Ok(result)
+            }
+            Err(e) => {
+                let info = self
+                    .get_campaign_info(eth, campaign_id, sec_key)
+                    .await?;
+                println!("refundBounty erro:{:?} , and info :{:?}", handle_error(e), info);
                 Err(web3::contract::Error::InterfaceUnsupported)
             }
         }

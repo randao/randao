@@ -10,7 +10,7 @@ mod contract;
 use std::fs::create_dir;
 use std::path::Path;
 use std::thread::sleep;
-use std::{sync::Arc, thread, time::Duration};
+use std::{env, sync::Arc, thread, time::Duration};
 
 use actix_cors::Cors;
 use actix_web::{middleware, post, web, App, HttpServer, Responder};
@@ -57,8 +57,9 @@ async fn exit() -> impl Responder {
 
 impl MainThread {
     pub fn set_up() -> Self {
-        let opt = Opts::parse();
-        let config: Config = Config::parse_from_file(&opt.config);
+        let current_dir = env::current_dir().unwrap();
+        let config_path = Path::new(&current_dir).join("config.json");
+        let config: Config = Config::parse_from_file(&config_path);
         let client = Arc::new(Mutex::new(BlockClient::setup(&config, None)));
         MainThread { client }
     }
@@ -169,13 +170,17 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn run_main() -> Result<U256, Error> {
-    let opt = Opts::parse();
-    let config: Config = Config::parse_from_file(&opt.config);
+    let current_dir = env::current_dir().unwrap();
+    let config_path = Path::new(&current_dir).join("config.json");
+    let config: Config = Config::parse_from_file(&config_path);
     let mut client = BlockClient::setup(&config, None);
+    let file_path = Path::new(&current_dir).join("Randao_sol_Randao.abi");
+    let abi_path_str = file_path.to_str().unwrap();
+    println!("abi_path_str:{:?}",abi_path_str);
     client.contract_setup(
         &config.root_secret.clone(),
-        &config.chain.participant.clone(),
-        "randao/Randao_sol_Randao.abi",
+        &config.chain.opts.randao.clone(),
+        abi_path_str,
         10000000,
         10000000000,
     );
@@ -234,7 +239,7 @@ fn run_main() -> Result<U256, Error> {
                 .contract_get_campaign_info(campaign_id)
                 .unwrap();
             if local_client.config.chain.opts.max_campaigns
-                <= i32::try_from(new_campaign_num).unwrap()
+                <= i32::try_from(new_campaign_num).or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?
             {
                 break; //return Err(Error::GetNumCampaignsErr);
             }
@@ -256,7 +261,7 @@ fn run_main() -> Result<U256, Error> {
                     &local_client,
                     local_client.config.clone(),
                 );
-                let (uuid, campaign_id, randao_num, _my_bounty) = work_thd.do_task().unwrap();
+                let (uuid, campaign_id, randao_num, _my_bounty) =  work_thd.do_task().unwrap();
                 info!("campaign_id:{:?},  randao:{:?}", campaign_id, randao_num);
 
                 {
@@ -280,7 +285,6 @@ fn contract_new_campaign(client: &BlockClient) -> Option<TransactionReceipt> {
     let commit_balkline: u128 = 16;
     let commit_deadline: u128 = 8;
     let deposit: u128 = 1000000000000000000;
-    //let  arg = format!("{:?},{:?},{:?},{:?}", bnum, deposit, commit_balkline, commit_deadline);
 
     let new_data = NewCampaignData {
         bnum: bnum.into(),
@@ -293,13 +297,16 @@ fn contract_new_campaign(client: &BlockClient) -> Option<TransactionReceipt> {
 
 #[test]
 fn test_create_new_campaign() {
+    use std::fs;
+    use serde_json::{Value, from_str};
+
     let config: std::path::PathBuf = std::path::PathBuf::from("config.json");
     let config: Config = Config::parse_from_file(&config);
     let mut client = BlockClient::setup(&config, None);
     client.contract_setup(
         &config.root_secret.clone(),
-        &config.chain.participant.clone(),
-        "randao/Randao_sol_Randao.abi",
+        &config.chain.opts.randao.clone(),
+        "Randao_sol_Randao.abi",
         10000000,
         10000000000,
     );
@@ -319,26 +326,61 @@ fn test_create_new_campaign() {
     let campaign_id = client.contract_campaign_num().unwrap();
     let campaign = campaign_id.as_u128() - 1;
     assert!(campaign > 0, "Campaign ID must be greater than 0");
+
+    let current_dir = env::current_dir().unwrap();
+    let file_path = Path::new(&current_dir).join("src/test-keys/test-key.json");
+    let file_path_str = file_path.to_str().unwrap();
+    let file_contents = fs::read_to_string(file_path).unwrap();
+
+    // Parse the JSON object
+    let keys: Value = from_str(&file_contents).unwrap();
+
+    // Extract the secrets from the JSON object
+    let founder = keys["founder"]["secret"].as_str().unwrap();
+    let follower = keys["follower"]["secret"].as_str().unwrap();
+    let consumer = keys["consumer"]["secret"].as_str().unwrap();
+    let committer = keys["committer"]["secret"].as_str().unwrap();
+
+    println!("Founder secret: {}", founder);
+    println!("Follower secret: {}", follower);
+    println!("Consumer secret: {}", consumer);
+    println!("Committer secret: {}", committer);
 }
 
 #[test]
 fn test_contract_new_campaign() {
     use std::path::PathBuf;
+    use std::fs;
+    use serde_json::{Value, from_str};
+
+    let current_dir = env::current_dir().unwrap();
+    let file_path = Path::new(&current_dir).join("src/test-keys/test-key.json");
+    let file_path_str = file_path.to_str().unwrap();
+    let file_contents = fs::read_to_string(file_path).unwrap();
+
+    // Parse the JSON object
+    let keys: Value = from_str(&file_contents).unwrap();
+
+    // Extract the secrets from the JSON object
+    let founder = keys["founder"]["secret"].as_str().unwrap();
+    let follower = keys["follower"]["secret"].as_str().unwrap();
+    let consumer = keys["consumer"]["secret"].as_str().unwrap();
+    let committer = keys["committer"]["secret"].as_str().unwrap();
 
     let config: PathBuf = PathBuf::from("config.json");
     let config: Config = Config::parse_from_file(&config);
     let mut client = BlockClient::setup(&config, None);
     client.contract_setup(
         &config.root_secret.clone(),
-        &config.chain.participant.clone(),
-        "randao/Randao_sol_Randao.abi",
+        &config.chain.opts.randao.clone(),
+        "Randao_sol_Randao.abi",
         10000000,
         10000000000,
     );
     let block_num = client.block_number().unwrap();
     let bnum = block_num.as_u64() + 10;
-    let commit_balkline: u128 = 8;
-    let commit_deadline: u128 = 4;
+    let commit_balkline: u128 = 7;
+    let commit_deadline: u128 = 3;
     let deposit: u128 = 1000000000000000000;
 
     let new_data = NewCampaignData {
@@ -349,15 +391,16 @@ fn test_contract_new_campaign() {
     };
     client.contract_new_campaign(1000000, 10000000000, new_data);
     let campaign_id = client.contract_campaign_num().unwrap();
+    assert!(campaign_id.as_u128() > 0);
     let campaign = campaign_id.as_u128() - 1;
-    assert!(campaign > 0, "Campaign ID must be greater than 0");
+    assert!(campaign >= 0, "Campaign ID must be greater than 0");
 
     let result = client.contract_follow(
         1000000,
         10000000000,
         campaign,
         deposit,
-        &config.secret_key.follower_secret,
+        follower,
     );
     assert!(result.is_some());
 
@@ -366,22 +409,22 @@ fn test_contract_new_campaign() {
     }
     let _s = "131242344353464564564574574567456";
     let hs = client.contract_sha_commit(_s.clone()).unwrap();
-    client.contract_commit(campaign, deposit, &config.secret_key.consumer_secret, hs);
+    client.contract_commit(campaign, deposit, consumer.clone(), hs);
     for _ in 0..1 {
         wait_blocks(&client);
     }
-    client.contract_reveal(campaign, deposit, &config.secret_key.consumer_secret, _s);
+    client.contract_reveal(campaign, deposit, consumer.clone(), _s);
     let info = client.contract_get_campaign_info(campaign).unwrap();
     println!("campaign info :{:?}", info);
     for _ in 0..1 {
         wait_blocks(&client);
     }
     let randao_num = client
-        .contract_get_random(campaign, &config.secret_key.consumer_secret)
+        .contract_get_random(campaign, consumer.clone())
         .unwrap();
     println!("randao_num :{:?}", randao_num);
     let my_bounty = client
-        .contract_get_my_bounty(campaign, &config.secret_key.consumer_secret)
+        .contract_get_my_bounty(campaign, consumer.clone())
         .unwrap();
     println!("my_bounty :{:?}", my_bounty);
 

@@ -3,9 +3,9 @@
         "name": "Anvil",
         "chainId": "2152",
         "endpoint":"http://127.0.0.1:8545",
-        "participant": "0x48c224dA3D89F1d224484F49dFD2565910ED29A8",
+        "participant": "b501fc5879f214ee8be2832e43955ac0f19e20d1f7e33436d6746ac889dc043d",
         "opts": {
-            "randao": "0x48c224dA3D89F1d224484F49dFD2565910ED29A8",
+            "randao": "0x4cE6f1d448B82B89AC0Eb81b92c6842A3C1756a9",
             "gasLimit": "1000000",
             "maxGasPrice": "100000000000",
             "minGasReserve": "1000000000000000000",
