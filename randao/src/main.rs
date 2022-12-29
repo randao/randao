@@ -350,7 +350,6 @@ fn test_create_new_campaign() {
 
     let current_dir = env::current_dir().unwrap();
     let file_path = Path::new(&current_dir).join("src/test-keys/test-key.json");
-    let file_path_str = file_path.to_str().unwrap();
     let file_contents = fs::read_to_string(file_path).unwrap();
 
     // Parse the JSON object
@@ -376,17 +375,16 @@ fn test_contract_new_campaign() {
 
     let current_dir = env::current_dir().unwrap();
     let file_path = Path::new(&current_dir).join("src/test-keys/test-key.json");
-    let file_path_str = file_path.to_str().unwrap();
     let file_contents = fs::read_to_string(file_path).unwrap();
 
     // Parse the JSON object
     let keys: Value = from_str(&file_contents).unwrap();
 
     // Extract the secrets from the JSON object
-    let founder = keys["founder"]["secret"].as_str().unwrap();
+    let _founder = keys["founder"]["secret"].as_str().unwrap();
     let follower = keys["follower"]["secret"].as_str().unwrap();
     let consumer = keys["consumer"]["secret"].as_str().unwrap();
-    let committer = keys["committer"]["secret"].as_str().unwrap();
+    let _committer = keys["committer"]["secret"].as_str().unwrap();
 
     let config: PathBuf = PathBuf::from("config.json");
     let config: Config = Config::parse_from_file(&config);
@@ -414,7 +412,7 @@ fn test_contract_new_campaign() {
     let campaign_id = client.contract_campaign_num().unwrap();
     assert!(campaign_id.as_u128() > 0);
     let campaign = campaign_id.as_u128() - 1;
-    assert!(campaign >= 0, "Campaign ID must be greater than 0");
+    assert!(campaign > 0, "Campaign ID must be greater than 0");
 
     let result = client.contract_follow(1000000, 10000000000, campaign, deposit, follower);
     assert!(result.is_some());

@@ -8,7 +8,7 @@ use web3::contract::Error;
 use web3::types::BlockNumber::Number;
 use web3::types::{Address, H256};
 
-use std::fs::{File, OpenOptions};
+use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::Path;
 use uuid::Uuid;
@@ -93,6 +93,7 @@ pub fn check_campaign_info(
 }
 
 pub fn store_uuid(uuid: &Uuid) -> Result<(), std::io::Error> {
+    fs::create_dir_all("./uuid")?;
     let path = Path::new("./uuid/uuids.txt");
     if !path.exists() {
         File::create(path)?;
@@ -140,6 +141,8 @@ pub fn delete_all_uuids() -> Result<(), std::io::Error> {
     let path = "./uuid/uuids.txt";
     let mut file = OpenOptions::new().write(true).truncate(true).open(path)?;
     file.write_all(b"")?;
+    fs::remove_file(path)?;
+    fs::remove_dir_all("./uuid/")?;
     Ok(())
 }
 #[test]
@@ -165,5 +168,5 @@ fn test_uuid_store_and_remove() {
     assert!(uuids.contains(&uuid1));
     assert!(!uuids.contains(&uuid2));
     assert!(uuids.contains(&uuid3));
-    delete_all_uuids();
+    let _ = delete_all_uuids();
 }
