@@ -71,7 +71,7 @@ impl<T: Debug + Serialize> Display for ApiResult<T> {
     }
 }
 
-pub type ApiError = ApiResult<()>;
+pub type _ApiError = ApiResult<()>;
 impl<T: Debug + Serialize> ResponseError for ApiResult<T> {
     fn status_code(&self) -> StatusCode {
         StatusCode::OK
@@ -118,7 +118,7 @@ impl<T: Serialize> Responder for &ApiResult<T> {
 }
 
 // return 200 all
-pub fn json_error_handler<E: std::fmt::Display + std::fmt::Debug + 'static>(
+pub fn _json_error_handler<E: std::fmt::Display + std::fmt::Debug + 'static>(
     err: E,
     req: &HttpRequest,
 ) -> error::Error {

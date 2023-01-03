@@ -19,10 +19,13 @@ use prometheus::{
 use randao::{
     config::*, contract::*, error::Error, utils::*, BlockClient, WorkThd, ONGOING_CAMPAIGNS,
 };
+use randao::{
+    CONF_PATH, //, KEY_PATH
+    RANDAO_PATH,
+};
 use std::{
-    env,
     fs::create_dir,
-    path::Path,
+    path::{Path, PathBuf},
     str::FromStr,
     sync::{
         atomic::{AtomicBool, Ordering as Order},
@@ -58,8 +61,7 @@ async fn exit() -> impl Responder {
 
 impl MainThread {
     pub fn set_up() -> Self {
-        let current_dir = env::current_dir().unwrap();
-        let config_path = Path::new(&current_dir).join("config.json");
+        let config_path = PathBuf::from(CONF_PATH);
         let config: Config = Config::parse_from_file(&config_path);
         let client = Arc::new(Mutex::new(BlockClient::setup(&config, None)));
         MainThread { client }
@@ -137,12 +139,22 @@ fn main() -> anyhow::Result<()> {
     // env::set_var("RUST_LOG", "info,all=info");
     // env_logger::init();
 
-    let uuid_path = Path::new("./uuid");
-    if !uuid_path.exists() {
-        create_dir("./uuid")?;
-    } else if !uuid_path.is_dir() {
-        anyhow::bail!("uuid folder is not dir!!!");
+    let randao_path = Path::new(RANDAO_PATH);
+    if !randao_path.exists() {
+        create_dir(randao_path)?;
+    } else if !randao_path.is_dir() {
+        anyhow::bail!("randao folder is not dir!!!");
     }
+
+    let conf_path = Path::new(CONF_PATH);
+    if !conf_path.exists() || !conf_path.is_file() {
+        anyhow::bail!("config folder is incorrect!!!");
+    }
+
+    // let key_path = Path::new(KEY_PATH);
+    // if !key_path.exists() || !key_path.is_dir() {
+    //     anyhow::bail!("key folder is incorrect!!!");
+    // }
 
     thread::spawn(move || {
         let main_thread = MainThread::set_up();
@@ -171,17 +183,15 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn run_main() -> Result<U256, Error> {
-    let current_dir = env::current_dir().unwrap();
-    let config_path = Path::new(&current_dir).join("config.json");
+    let config_path = PathBuf::from(CONF_PATH);
     let config: Config = Config::parse_from_file(&config_path);
     let mut client = BlockClient::setup(&config, None);
 
-    let file_path = Path::new(&current_dir).join("Randao_sol_Randao.abi");
-    let abi_path_str = file_path.to_str().unwrap();
+    let abi_content = include_str!("../Randao_sol_Randao.abi");
     client.contract_setup(
         &config.root_secret.clone(),
         &config.chain.opts.randao.clone(),
-        abi_path_str,
+        abi_content,
         10000000,
         10000000000,
     );
@@ -215,7 +225,7 @@ fn run_main() -> Result<U256, Error> {
     let max_thds_cnt: usize = num_cpus::get() * 2;
     let mut check_cnt: u8 = 0;
 
-    let mut uuids = Vec::new();
+    let mut uuids;
     {
         let _guard = MUTEX
             .lock()
@@ -225,6 +235,7 @@ fn run_main() -> Result<U256, Error> {
             Ok(Vec::new())
         })?;
     }
+    info!("uuids {:?}", uuids);
 
     while !STOP.load(Order::SeqCst) {
         //test
@@ -258,7 +269,7 @@ fn run_main() -> Result<U256, Error> {
             {
                 let _guard = MUTEX.lock().unwrap();
                 if uuids.is_empty() {
-                    store_uuid(&Uuid::from_str(uuid.as_str().clone()).unwrap()).unwrap();
+                    store_uuid(&Uuid::from_str(uuid.as_str()).unwrap()).unwrap();
                     is_new_uuid = true;
                 } else {
                     uuid = uuids.pop().unwrap().to_string();
@@ -301,7 +312,7 @@ fn run_main() -> Result<U256, Error> {
                         .pop()
                         .unwrap()
                         .join()
-                        .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))??;
+                        .map_err(|e| Error::Unknown(format!("{:?}", e)))??;
                 }
                 check_cnt = 0;
             }
@@ -309,8 +320,7 @@ fn run_main() -> Result<U256, Error> {
         sleep(Duration::from_millis(5000));
     }
     for t in handle_vec {
-        t.join()
-            .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))??;
+        t.join().map_err(|e| Error::Unknown(format!("{:?}", e)))??;
     }
     return Ok(U256::from(1));
 }
@@ -337,10 +347,11 @@ fn contract_new_campaign(client: &BlockClient) -> Option<TransactionReceipt> {
 #[test]
 fn test_create_new_campaign() {
     use serde_json::{from_str, Value};
+    use std::env;
     use std::fs;
 
-    let config: std::path::PathBuf = std::path::PathBuf::from("config.json");
-    let config: Config = Config::parse_from_file(&config);
+    let config_path = PathBuf::from(CONF_PATH);
+    let config: Config = Config::parse_from_file(&config_path);
     let mut client = BlockClient::setup(&config, None);
     client.contract_setup(
         &config.root_secret.clone(),
@@ -388,6 +399,7 @@ fn test_create_new_campaign() {
 #[test]
 fn test_contract_new_campaign() {
     use serde_json::{from_str, Value};
+    use std::env;
     use std::fs;
     use std::path::PathBuf;
 
@@ -404,12 +416,12 @@ fn test_contract_new_campaign() {
     let consumer = keys["consumer"]["secret"].as_str().unwrap();
     let _committer = keys["committer"]["secret"].as_str().unwrap();
 
-    let config: PathBuf = PathBuf::from("config.json");
-    let config: Config = Config::parse_from_file(&config);
+    let config_path = PathBuf::from(CONF_PATH);
+    let config: Config = Config::parse_from_file(&config_path);
     let mut client = BlockClient::setup(&config, None);
     client.contract_setup(
-        &config.root_secret.clone(),
-        &config.chain.opts.randao.clone(),
+        &config.root_secret,
+        &config.chain.opts.randao,
         "Randao_sol_Randao.abi",
         10000000,
         10000000000,
@@ -439,24 +451,20 @@ fn test_contract_new_campaign() {
         wait_blocks(&client);
     }
     let _s = "131242344353464564564574574567456";
-    let hs = client.contract_sha_commit(_s.clone()).unwrap();
-    client.contract_commit(campaign, deposit, consumer.clone(), hs);
+    let hs = client.contract_sha_commit(_s).unwrap();
+    client.contract_commit(campaign, deposit, consumer, hs);
     for _ in 0..1 {
         wait_blocks(&client);
     }
-    client.contract_reveal(campaign, deposit, consumer.clone(), _s);
+    client.contract_reveal(campaign, deposit, consumer, _s);
     let info = client.contract_get_campaign_info(campaign).unwrap();
     println!("campaign info :{:?}", info);
     for _ in 0..1 {
         wait_blocks(&client);
     }
-    let randao_num = client
-        .contract_get_random(campaign, consumer.clone())
-        .unwrap();
+    let randao_num = client.contract_get_random(campaign, consumer).unwrap();
     println!("randao_num :{:?}", randao_num);
-    let my_bounty = client
-        .contract_get_my_bounty(campaign, consumer.clone())
-        .unwrap();
+    let my_bounty = client.contract_get_my_bounty(campaign, consumer).unwrap();
     println!("my_bounty :{:?}", my_bounty);
 
     let uuid = Uuid::new_v4().to_string();
