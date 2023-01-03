@@ -59,7 +59,7 @@ async fn exit() -> impl Responder {
 impl MainThread {
     pub fn set_up() -> Self {
         let current_dir = env::current_dir().unwrap();
-        let config_path = Path::new(&current_dir).join("randao/config.json");
+        let config_path = Path::new(&current_dir).join("config.json");
         let config: Config = Config::parse_from_file(&config_path);
         let client = Arc::new(Mutex::new(BlockClient::setup(&config, None)));
         MainThread { client }
@@ -172,12 +172,12 @@ fn main() -> anyhow::Result<()> {
 
 fn run_main() -> Result<U256, Error> {
     let current_dir = env::current_dir().unwrap();
-    let config_path = Path::new(&current_dir).join("randao/config.json");
+    let config_path = Path::new(&current_dir).join("config.json");
     let config: Config = Config::parse_from_file(&config_path);
     let mut client = BlockClient::setup(&config, None);
-    let file_path = Path::new(&current_dir).join("randao/Randao_sol_Randao.abi");
+
+    let file_path = Path::new(&current_dir).join("Randao_sol_Randao.abi");
     let abi_path_str = file_path.to_str().unwrap();
-    println!("abi_path_str:{:?}", abi_path_str);
     client.contract_setup(
         &config.root_secret.clone(),
         &config.chain.opts.randao.clone(),

@@ -1,11 +1,11 @@
 {
     "chain": {
         "name": "Anvil",
-        "chainId": "2152",
-        "endpoint":"http://127.0.0.1:8545",
+        "chainId": "2153",
+        "endpoint":"https://prod-testnet.prod.findora.org:8545",
         "participant": "b501fc5879f214ee8be2832e43955ac0f19e20d1f7e33436d6746ac889dc043d",
         "opts": {
-            "randao": "0x4cE6f1d448B82B89AC0Eb81b92c6842A3C1756a9",
+            "randao": "0x0d6fD3a2689B9032E7B7A6B98eFf9c0f9D1E92a4",
             "gasLimit": "1000000",
             "maxGasPrice": "100000000000",
             "minGasReserve": "1000000000000000000",
