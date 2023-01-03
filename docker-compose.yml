@@ -5,41 +5,53 @@ networks:
 
 services:
   randao-participant0:
-    image: findoranetwork/randao:v0.1.0
+    build: .
     container_name: participant0
     restart: always
     environment:
       - KEYSTORE_PASSWORD=pswd0
-    command: --config /config/config.json
+    # command: --config /root/.randao/config/config.json
     volumes:
-      - ./campaigns/participant0:/root/.randao
-      - ./config/config0.json:/config/config.json
-      - ./keys/0x02a5D1F97c24dC9399A2878dc44cbDA274093B6D.key:/keys/0x02a5D1F97c24dC9399A2878dc44cbDA274093B6D.key
+      - ./campaigns/participant0:/root/.randao/uuid
+      - ./config/config0.json:/root/.randao/config/config.json
+      #- ./keys/0x02a5D1F97c24dC9399A2878dc44cbDA274093B6D.key:/root/.randao/keys/0x02a5D1F97c24dC9399A2878dc44cbDA274093B6D.key
     networks:
       - randao
+    ports:
+      - "80:80"
+      - "8080:8080"
+      - "9090:9090"
   randao-participant1:
-    image: findoranetwork/randao:v0.1.0
+    build: .
     container_name: participant1
     restart: always
     environment:
       - KEYSTORE_PASSWORD=pswd1
-    command: --config /config/config.json
+    # command: --config /root/.randao/config/config.json
     volumes:
-      - ./campaigns/participant1:/root/.randao
-      - ./config/config1.json:/config/config.json
-      - ./keys/0xf016802048A95017bAa7670c944D23537b2b2F19.key:/keys/0xf016802048A95017bAa7670c944D23537b2b2F19.key
+      - ./campaigns/participant1:/root/.randao/uuid
+      - ./config/config1.json:/root/.randao/config/config.json
+      #- ./keys/0xf016802048A95017bAa7670c944D23537b2b2F19.key:/root/.randao/keys/0xf016802048A95017bAa7670c944D23537b2b2F19.key
     networks:
       - randao
+    ports:
+      - "81:80"
+      - "8081:8080"
+      - "9091:9090"
   randao-participant2:
-    image: findoranetwork/randao:v0.1.0
+    build: .
     container_name: participant2
     restart: always
     environment:
       - KEYSTORE_PASSWORD=pswd2
-    command: --config /config/config.json
+    # command: --config /root/.randao/config/config.json
     volumes:
-      - ./campaigns/participant2:/root/.randao
-      - ./config/config2.json:/config/config.json
-      - ./keys/0xAB9F918fBefE4b6C9464774F06482DEf349579EF.key:/keys/0xAB9F918fBefE4b6C9464774F06482DEf349579EF.key
+      - ./campaigns/participant2:/root/.randao/uuid
+      - ./config/config2.json:/root/.randao/config/config.json
+      #- ./keys/0xAB9F918fBefE4b6C9464774F06482DEf349579EF.key:/root/.randao/keys/0xAB9F918fBefE4b6C9464774F06482DEf349579EF.key
     networks:
       - randao
+    ports:
+      - "82:80"
+      - "8082:8080"
+      - "9092:9090"

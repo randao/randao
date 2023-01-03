@@ -1,5 +1,5 @@
 # Compile golang
-FROM ubuntu:20.04 as randao-builder
+FROM ubuntu:20.04 as rust-builder
 ENV PATH=/root/.cargo/bin:$PATH
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install libc-dev make git curl wget jq ssh python3-pip clang libclang-dev llvm-dev libleveldb-dev musl-tools pkg-config libssl-dev build-essential librocksdb-dev vim ca-certificates -y
@@ -22,12 +22,13 @@ RUN rustup target add x86_64-unknown-linux-musl
 RUN rustup install nightly
 RUN rustup target add wasm32-unknown-unknown --toolchain nightly
 RUN cargo install cargo-tarpaulin
+
+FROM rust-builder as randao-builder
 RUN git clone https://github.com/FindoraNetwork/randao.git -b integration_test \
   && mv randao /root/ \
   && cd /root/randao  \
   && cargo build --release \
-  && cp /root/randao/target/release/randao /bin/ \
-  && cp /root/randao/randao/config.json /root/
+  && cp /root/randao/target/release/randao /bin/
 
 COPY ./docker-run.sh /root/
 RUN chmod a+x /root/docker-run.sh
