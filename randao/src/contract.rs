@@ -1,5 +1,4 @@
 use secp256k1::SecretKey as SecretKey2;
-use std::fs;
 use std::str::FromStr;
 use web3::contract::tokens::Tokenize;
 use web3::{
@@ -67,7 +66,7 @@ impl Tokenize for RevealData {
 pub struct RandaoContract {
     pub sec_key: String,
     pub contract_addr: String,
-    pub abi_path: String,
+    pub abi_content: String,
     pub gas: u32,
     pub gas_price: u128,
 }
@@ -80,10 +79,9 @@ impl RandaoContract {
         sec_key: &str,
     ) -> web3::contract::Result<CampaignInfo> {
         let (_root_sk, root_addr) = extract_keypair_from_str(sec_key.to_string());
-        let abi = fs::read(&self.abi_path).unwrap();
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
 
-        let contract = Contract::from_json(eth, contr_addr, &abi)?;
+        let contract = Contract::from_json(eth, contr_addr, self.abi_content.as_bytes())?;
         let opt = Options::default();
 
         let token_id: U256 = campaign_id.into();
@@ -109,9 +107,8 @@ impl RandaoContract {
         gas_price: u128,
         args: NewCampaignData,
     ) -> web3::contract::Result<TransactionReceipt> {
-        let abi = fs::read(&self.abi_path).unwrap();
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
-        let contract = Contract::from_json(eth, contr_addr, &abi)?;
+        let contract = Contract::from_json(eth, contr_addr, self.abi_content.as_bytes())?;
         let secretkey = SecretKey2::from_str(&self.sec_key).unwrap();
 
         let opt = Options {
@@ -135,9 +132,8 @@ impl RandaoContract {
         deposit: u128,
         follow_sec_key: &str,
     ) -> web3::contract::Result<TransactionReceipt> {
-        let abi = fs::read(&self.abi_path).unwrap();
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
-        let contract = Contract::from_json(eth.clone(), contr_addr, &abi)?;
+        let contract = Contract::from_json(eth.clone(), contr_addr, self.abi_content.as_bytes())?;
         let secretkey = SecretKey2::from_str(follow_sec_key).unwrap();
         let (_root_sk, root_addr) = extract_keypair_from_str(follow_sec_key.to_string());
         let token_id: U256 = campaign_id.into();
@@ -178,9 +174,8 @@ impl RandaoContract {
         _gas_price: u128,
         args: NewCampaignData,
     ) -> web3::contract::Result<U256> {
-        let abi = fs::read(&self.abi_path).unwrap();
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
-        let contract = Contract::from_json(eth, contr_addr, &abi)?;
+        let contract = Contract::from_json(eth, contr_addr, self.abi_content.as_bytes())?;
         let (_root_sk, root_addr) = extract_keypair_from_str(self.sec_key.to_string());
 
         let opt = Options::default();
@@ -193,10 +188,9 @@ impl RandaoContract {
 
     pub async fn campaign_num(&self, eth: Eth<Http>) -> web3::contract::Result<U256> {
         let (_root_sk, root_addr) = extract_keypair_from_str(self.sec_key.to_string());
-        let abi = fs::read(&self.abi_path).unwrap();
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
 
-        let contract = Contract::from_json(eth, contr_addr, &abi)?;
+        let contract = Contract::from_json(eth, contr_addr, self.abi_content.as_bytes())?;
         let opt = Options::default();
 
         let mut campaigns_id = U256::default();
@@ -217,10 +211,9 @@ impl RandaoContract {
 
     pub async fn sha_commit(&self, eth: Eth<Http>, _s: &str) -> web3::contract::Result<Vec<u8>> {
         let (_root_sk, root_addr) = extract_keypair_from_str(self.sec_key.to_string());
-        let abi = fs::read(&self.abi_path).unwrap();
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
 
-        let contract = Contract::from_json(eth, contr_addr, &abi)?;
+        let contract = Contract::from_json(eth, contr_addr, self.abi_content.as_bytes())?;
         let opt = Options::default();
 
         let token_id: U256 = U256::from_dec_str(_s).unwrap();
@@ -248,9 +241,8 @@ impl RandaoContract {
         commit_sec_key: &str,
         _hs: Vec<u8>,
     ) -> web3::contract::Result<TransactionReceipt> {
-        let abi = fs::read(&self.abi_path).unwrap();
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
-        let contract = Contract::from_json(eth.clone(), contr_addr, &abi)?;
+        let contract = Contract::from_json(eth.clone(), contr_addr, self.abi_content.as_bytes())?;
         let secretkey = SecretKey2::from_str(commit_sec_key).unwrap();
         let (_root_sk, root_addr) = extract_keypair_from_str(commit_sec_key.to_string());
         let opt_chech = Options {
@@ -297,9 +289,8 @@ impl RandaoContract {
         commit_sec_key: &str,
         _s: &str,
     ) -> web3::contract::Result<TransactionReceipt> {
-        let abi = fs::read(&self.abi_path).unwrap();
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
-        let contract = Contract::from_json(eth.clone(), contr_addr, &abi)?;
+        let contract = Contract::from_json(eth.clone(), contr_addr, self.abi_content.as_bytes())?;
         let secretkey = SecretKey2::from_str(commit_sec_key).unwrap();
         let (_root_sk, root_addr) = extract_keypair_from_str(commit_sec_key.to_string());
         let opt = Options {
@@ -339,9 +330,8 @@ impl RandaoContract {
         campaign_id: u128,
         sec_key: &str,
     ) -> web3::contract::Result<TransactionReceipt> {
-        let abi = fs::read(&self.abi_path).unwrap();
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
-        let contract = Contract::from_json(eth.clone(), contr_addr, &abi)?;
+        let contract = Contract::from_json(eth.clone(), contr_addr, self.abi_content.as_bytes())?;
         let secretkey = SecretKey2::from_str(sec_key).unwrap();
         let (_root_sk, root_addr) = extract_keypair_from_str(sec_key.to_string());
         let opt = Options {
@@ -387,9 +377,8 @@ impl RandaoContract {
         campaign_id: u128,
         sec_key: &str,
     ) -> web3::contract::Result<U256> {
-        let abi = fs::read(&self.abi_path).unwrap();
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
-        let contract = Contract::from_json(eth.clone(), contr_addr, &abi)?;
+        let contract = Contract::from_json(eth.clone(), contr_addr, self.abi_content.as_bytes())?;
         let (_root_sk, root_addr) = extract_keypair_from_str(sec_key.to_string());
         let opt = Options {
             gas: Some(self.gas.into()),

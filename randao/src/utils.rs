@@ -1,5 +1,7 @@
 use crate::config::Config;
+use crate::RANDAO_PATH;
 use crate::{BlockClient, CampaignInfo, U256};
+
 use sha3::{Digest, Keccak256};
 use std::str::FromStr;
 use std::thread::sleep;
@@ -93,32 +95,32 @@ pub fn check_campaign_info(
 }
 
 pub fn store_uuid(uuid: &Uuid) -> Result<(), std::io::Error> {
-    fs::create_dir_all("./uuid")?;
-    let path = Path::new("./uuid/uuids.txt");
+    fs::create_dir_all(RANDAO_PATH)?;
+    let path = RANDAO_PATH.to_string() + "uuids.txt";
+    let path = Path::new(&(path));
     if !path.exists() {
         File::create(path)?;
     }
-    let mut file = OpenOptions::new().append(true).open("./uuid/uuids.txt")?;
+    let mut file = OpenOptions::new().append(true).open(&path)?;
 
-    write!(file, "{}\n", uuid)?;
+    writeln!(file, "{}", uuid)?;
     Ok(())
 }
 
 pub fn remove_uuid(uuid: &Uuid) -> Result<(), std::io::Error> {
     let mut uuids = read_uuids().unwrap();
+    let path = RANDAO_PATH.to_string() + "uuids.txt";
     uuids.retain(|u| u != uuid);
-    let mut file = OpenOptions::new()
-        .write(true)
-        .truncate(true)
-        .open("./uuid/uuids.txt")?;
+    let mut file = OpenOptions::new().write(true).truncate(true).open(&path)?;
     for uuid in uuids {
-        write!(file, "{}\n", uuid)?;
+        writeln!(file, "{}", uuid)?;
     }
     Ok(())
 }
 
 pub fn read_uuids() -> Result<Vec<Uuid>, std::io::Error> {
-    let mut file = File::open("./uuid/uuids.txt")?;
+    let path = RANDAO_PATH.to_string() + "uuids.txt";
+    let mut file = File::open(&path)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
 
@@ -138,11 +140,11 @@ pub fn read_uuids() -> Result<Vec<Uuid>, std::io::Error> {
 }
 
 pub fn delete_all_uuids() -> Result<(), std::io::Error> {
-    let path = "./uuid/uuids.txt";
-    let mut file = OpenOptions::new().write(true).truncate(true).open(path)?;
+    let path = RANDAO_PATH.to_string() + "uuids.txt";
+    let mut file = OpenOptions::new().write(true).truncate(true).open(&path)?;
     file.write_all(b"")?;
     fs::remove_file(path)?;
-    fs::remove_dir_all("./uuid/")?;
+    fs::remove_dir_all(RANDAO_PATH)?;
     Ok(())
 }
 #[test]
