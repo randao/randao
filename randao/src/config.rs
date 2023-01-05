@@ -89,13 +89,8 @@ impl Detokenize for CampaignInfo {
 #[derive(clap::Parser, Debug)]
 pub struct Opts {
     /// Config file
-    #[clap(
-        short = 'c',
-        long = "config",
-        parse(from_os_str),
-        default_value = "config.json"
-    )]
-    pub config: PathBuf,
+    #[clap(short = 'c', long = "config", default_value = "config.json")]
+    pub config: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]

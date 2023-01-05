@@ -51,9 +51,25 @@ pub fn handle_error(error: Error) -> String {
 
 pub fn wait_blocks(client: &BlockClient) {
     let mut is_running = true;
-    let initial_block_number = client.block_number().unwrap();
+    let initial_block_number = match client.block_number().or_else(|| {
+        println!("get block_number err1!!!");
+        None
+    }) {
+        Some(v) => v,
+        None => {
+            return;
+        }
+    };
     while is_running {
-        let current_block_number = client.block_number().unwrap();
+        let current_block_number = match client.block_number().or_else(|| {
+            println!("get block_number err2!!!");
+            None
+        }) {
+            Some(v) => v,
+            None => {
+                return;
+            }
+        };
 
         if current_block_number > initial_block_number {
             is_running = false;

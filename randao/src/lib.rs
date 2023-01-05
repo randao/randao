@@ -22,7 +22,7 @@ use std::{
     path::Path,
 };
 
-use config::Config;
+pub use config::Config;
 use prometheus::{labels, opts};
 use prometheus::{register_gauge, Gauge};
 use serde::{Deserialize, Serialize};
@@ -31,10 +31,7 @@ use std::{
     error::Error as StdError,
     fs,
     str::FromStr,
-    sync::{
-        atomic::{AtomicU32},
-        Arc,
-    },
+    sync::{atomic::AtomicU32, Arc},
     time::Duration,
 };
 use tokio::{runtime::Runtime, sync::Mutex};
@@ -50,9 +47,13 @@ use web3::{
 const _FRC20_ADDRESS: u64 = 0x1000;
 pub const BLOCK_TIME: u64 = 16;
 
-pub const RANDAO_PATH: &str = "/root/.randao/uuid/";
-pub const CONF_PATH: &str = "/root/.randao/config/config.json";
-pub const KEY_PATH: &str = "/root/.randao/keys/";
+pub const RANDAO_PATH: &str = "/tmp/.randao/uuid/";
+// pub const CONF_PATH: &str = "/tmp/.randao/config/config.json";
+pub const KEY_PATH: &str = "/tmp/.randao/keys/";
+lazy_static! {
+    pub static ref CONF_PATH: std::sync::Mutex<String> =
+        std::sync::Mutex::new("config.json".to_string());
+}
 
 lazy_static! {
     pub(crate) static ref CUR_TASKS: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
@@ -70,7 +71,6 @@ lazy_static! {
     ))
     .unwrap();
 }
-
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct KeyPair {

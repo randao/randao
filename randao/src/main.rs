@@ -6,6 +6,7 @@ mod api;
 use actix_cors::Cors;
 use actix_web::{middleware, post, web, App, HttpServer, Responder};
 use api::ApiResult;
+use clap::Parser;
 use hyper::{
     header::CONTENT_TYPE,
     service::{make_service_fn, service_fn},
@@ -16,6 +17,7 @@ use log::{error, info};
 use prometheus::{
     labels, opts, register_gauge, register_histogram_vec, Encoder, Gauge, HistogramVec, TextEncoder,
 };
+use randao::config::Opts;
 use randao::{
     config::*, contract::*, error::Error, utils::*, BlockClient, WorkThd, ONGOING_CAMPAIGNS,
 };
@@ -23,6 +25,7 @@ use randao::{
     CONF_PATH, //, KEY_PATH
     RANDAO_PATH,
 };
+
 use std::{
     fs::create_dir,
     path::{Path, PathBuf},
@@ -61,8 +64,8 @@ async fn exit() -> impl Responder {
 
 impl MainThread {
     pub fn set_up() -> Self {
-        let config_path = PathBuf::from(CONF_PATH);
-        let config: Config = Config::parse_from_file(&config_path);
+        let conf_path = PathBuf::from(CONF_PATH.lock().unwrap().clone());
+        let config: Config = Config::parse_from_file(&conf_path);
         let client = Arc::new(Mutex::new(BlockClient::setup(&config, None)));
         MainThread { client }
     }
@@ -139,6 +142,9 @@ fn main() -> anyhow::Result<()> {
     // env::set_var("RUST_LOG", "info,all=info");
     // env_logger::init();
 
+    let opts: Opts = Opts::parse();
+    *CONF_PATH.lock().unwrap() = opts.config;
+
     let randao_path = Path::new(RANDAO_PATH);
     if !randao_path.exists() {
         create_dir(randao_path)?;
@@ -146,10 +152,10 @@ fn main() -> anyhow::Result<()> {
         anyhow::bail!("randao folder is not dir!!!");
     }
 
-    let conf_path = Path::new(CONF_PATH);
-    if !conf_path.exists() || !conf_path.is_file() {
-        anyhow::bail!("config folder is incorrect!!!");
-    }
+    // let conf_path = PathBuf::from(CONF_PATH.lock().unwrap().clone());
+    // if !conf_path.exists() || !conf_path.is_file() {
+    //     anyhow::bail!("config folder is incorrect!!!");
+    // }
 
     // let key_path = Path::new(KEY_PATH);
     // if !key_path.exists() || !key_path.is_dir() {
@@ -183,8 +189,8 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn run_main() -> Result<U256, Error> {
-    let config_path = PathBuf::from(CONF_PATH);
-    let config: Config = Config::parse_from_file(&config_path);
+    let conf_path = PathBuf::from(CONF_PATH.lock().unwrap().clone());
+    let config: Config = Config::parse_from_file(&conf_path);
     let mut client = BlockClient::setup(&config, None);
 
     let abi_content = include_str!("../Randao_sol_Randao.abi");
@@ -201,7 +207,7 @@ fn run_main() -> Result<U256, Error> {
     let block = client_arc.current_block().unwrap();
 
     //test
-    contract_new_campaign(&client_arc);
+    // contract_new_campaign(&client_arc);
 
     if chain_id.to_string() != client_arc.config.chain.chain_id {
         return Err(Error::CheckChainErr);
@@ -239,7 +245,7 @@ fn run_main() -> Result<U256, Error> {
 
     while !STOP.load(Order::SeqCst) {
         //test
-        contract_new_campaign(&client_arc);
+        // contract_new_campaign(&client_arc);
         let local_client = client_arc.clone();
 
         let new_campaign_num = match local_client.contract_campaign_num() {
@@ -281,20 +287,35 @@ fn run_main() -> Result<U256, Error> {
                 let mut work_thd;
                 if is_new_uuid {
                     work_thd = WorkThd::new(
-                        uuid,
+                        uuid.clone(),
                         campaign_id.clone(),
                         info,
                         &local_client,
                         local_client.config.clone(),
                     );
                 } else {
-                    work_thd =
-                        WorkThd::new_from_uuid(uuid, &local_client, local_client.config.clone());
+                    work_thd = WorkThd::new_from_uuid(
+                        uuid.clone(),
+                        &local_client,
+                        local_client.config.clone(),
+                    );
                 }
-                let (uuid, campaign_id, randao_num, _my_bounty) = work_thd
+                println!("work thread begin!!!");
+                match work_thd
                     .do_task()
-                    .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?;
-                info!("campaign_id:{:?},  randao:{:?}", campaign_id, randao_num);
+                    .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))
+                {
+                    Ok((uuid, campaign_id, randao_num, _my_bounty)) => {
+                        println!("work thread end success!!!");
+                        info!(
+                            "uuid: {:?}, campaign_id:{:?},  randao:{:?}",
+                            uuid, campaign_id, randao_num
+                        );
+                    }
+                    Err(e) => {
+                        println!("work thread err: {:?}", e);
+                    }
+                };
 
                 {
                     let _guard = MUTEX.lock().unwrap();
@@ -325,7 +346,7 @@ fn run_main() -> Result<U256, Error> {
     return Ok(U256::from(1));
 }
 
-fn contract_new_campaign(client: &BlockClient) -> Option<TransactionReceipt> {
+fn _contract_new_campaign(client: &BlockClient) -> Option<TransactionReceipt> {
     let block_num = client.block_number().unwrap();
     let bnum = block_num.as_u64() + 20;
     let commit_balkline: u128 = 16;
@@ -350,8 +371,8 @@ fn test_create_new_campaign() {
     use std::env;
     use std::fs;
 
-    let config_path = PathBuf::from(CONF_PATH);
-    let config: Config = Config::parse_from_file(&config_path);
+    let conf_path = PathBuf::from(CONF_PATH.lock().unwrap().clone());
+    let config: Config = Config::parse_from_file(&conf_path);
     let mut client = BlockClient::setup(&config, None);
     client.contract_setup(
         &config.chain.participant.clone(),
@@ -416,8 +437,8 @@ fn test_contract_new_campaign() {
     let consumer = keys["consumer"]["secret"].as_str().unwrap();
     let _committer = keys["committer"]["secret"].as_str().unwrap();
 
-    let config_path = PathBuf::from(CONF_PATH);
-    let config: Config = Config::parse_from_file(&config_path);
+    let conf_path = PathBuf::from(CONF_PATH.lock().unwrap().clone());
+    let config: Config = Config::parse_from_file(&conf_path);
     let mut client = BlockClient::setup(&config, None);
     client.contract_setup(
         &config.chain.participant,
