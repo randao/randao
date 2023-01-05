@@ -17,7 +17,7 @@ use uuid::Uuid;
 
 #[inline(always)]
 pub fn extract_keypair_from_config(config: &Config) -> (secp256k1::SecretKey, Address) {
-    let sk_str = config.root_secret.clone();
+    let sk_str = config.chain.participant.clone();
     let _root_sk = secp256k1::SecretKey::from_str(sk_str.trim()).unwrap();
     let s = secp256k1::Secp256k1::signing_only();
     let root_pk = secp256k1::PublicKey::from_secret_key(&s, &_root_sk);
@@ -69,7 +69,7 @@ pub fn check_campaign_info(
     config: &Config,
 ) -> bool {
     let block_number = client.block_number().unwrap();
-    let (_root_sk, root_addr) = extract_keypair_from_str(client.config.root_secret.clone());
+    let (_root_sk, root_addr) = extract_keypair_from_str(client.config.chain.participant.clone());
     let balance = client.balance(root_addr, Some(Number(block_number)));
     if U256::from_str(config.chain.opts.min_gas_reserve.as_str()).unwrap() >= balance {
         return false;

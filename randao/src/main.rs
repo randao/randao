@@ -189,7 +189,7 @@ fn run_main() -> Result<U256, Error> {
 
     let abi_content = include_str!("../Randao_sol_Randao.abi");
     client.contract_setup(
-        &config.root_secret.clone(),
+        &config.chain.participant.clone(),
         &config.chain.opts.randao.clone(),
         abi_content,
         10000000,
@@ -354,7 +354,7 @@ fn test_create_new_campaign() {
     let config: Config = Config::parse_from_file(&config_path);
     let mut client = BlockClient::setup(&config, None);
     client.contract_setup(
-        &config.root_secret.clone(),
+        &config.chain.participant.clone(),
         &config.chain.opts.randao.clone(),
         "Randao_sol_Randao.abi",
         10000000,
@@ -420,7 +420,7 @@ fn test_contract_new_campaign() {
     let config: Config = Config::parse_from_file(&config_path);
     let mut client = BlockClient::setup(&config, None);
     client.contract_setup(
-        &config.root_secret,
+        &config.chain.participant,
         &config.chain.opts.randao,
         "Randao_sol_Randao.abi",
         10000000,

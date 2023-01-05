@@ -418,7 +418,7 @@ impl BlockClient {
         self.rt
             .block_on(async {
                 let eth = (*self.eth.clone()).clone();
-                let sec = self.config.root_secret.as_str();
+                let sec = self.config.chain.participant.as_str();
                 self.randao_contract
                     .get_campaign_info(eth, campaign_id, sec)
                     .await
