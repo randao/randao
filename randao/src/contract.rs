@@ -1,6 +1,8 @@
+use lazy_static::lazy_static;
 use secp256k1::SecretKey as SecretKey2;
 use std::str::FromStr;
 use web3::contract::tokens::Tokenize;
+use web3::futures::lock::Mutex;
 use web3::{
     self,
     api::Eth,
@@ -9,6 +11,10 @@ use web3::{
     transports::Http,
     types::{TransactionReceipt, H160, U256},
 };
+
+lazy_static! {
+    pub static ref PRIKEY_CONTRACT_LOCK: Mutex<()> = Mutex::new(());
+}
 
 //use crate::utils::{extract_keypair_from_config, handle_error};
 use crate::{extract_keypair_from_str, handle_error, CampaignInfo};
@@ -117,9 +123,13 @@ impl RandaoContract {
             value: Some(args.deposit),
             ..Default::default()
         };
-        let result = contract
-            .signed_call_with_confirmations("newCampaign", args, opt, 1, &secretkey)
-            .await?;
+
+        let result = {
+            let _guard = PRIKEY_CONTRACT_LOCK.lock().await;
+            contract
+                .signed_call_with_confirmations("newCampaign", args, opt, 1, &secretkey)
+                .await?
+        };
         Ok(result)
     }
 
@@ -151,9 +161,12 @@ impl RandaoContract {
                     ..Default::default()
                 };
 
-                let result = contract
-                    .signed_call_with_confirmations("follow", token_id, opt, 1, &secretkey)
-                    .await?;
+                let result = {
+                    let _guard = PRIKEY_CONTRACT_LOCK.lock().await;
+                    contract
+                        .signed_call_with_confirmations("follow", token_id, opt, 1, &secretkey)
+                        .await?
+                };
                 println!("follow ok");
                 Ok(result)
             }
@@ -266,9 +279,12 @@ impl RandaoContract {
                     value: Some(deposit.into()),
                     ..Default::default()
                 };
-                let result = contract
-                    .signed_call_with_confirmations("commit", token.clone(), opt, 1, &secretkey)
-                    .await?;
+                let result = {
+                    let _guard = PRIKEY_CONTRACT_LOCK.lock().await;
+                    contract
+                        .signed_call_with_confirmations("commit", token.clone(), opt, 1, &secretkey)
+                        .await?
+                };
                 println!("commit ok");
                 Ok(result)
             }
@@ -308,9 +324,12 @@ impl RandaoContract {
             .await;
         match result {
             Ok(_) => {
-                let result = contract
-                    .signed_call_with_confirmations("reveal", token.clone(), opt, 1, &secretkey)
-                    .await?;
+                let result = {
+                    let _guard = PRIKEY_CONTRACT_LOCK.lock().await;
+                    contract
+                        .signed_call_with_confirmations("reveal", token.clone(), opt, 1, &secretkey)
+                        .await?
+                };
                 println!("reveal ok");
                 Ok(result)
             }
@@ -346,15 +365,18 @@ impl RandaoContract {
             .await;
         match result {
             Ok(_) => {
-                let result = contract
-                    .signed_call_with_confirmations(
-                        "refundBounty",
-                        token.clone(),
-                        opt,
-                        1,
-                        &secretkey,
-                    )
-                    .await?;
+                let result = {
+                    let _guard = PRIKEY_CONTRACT_LOCK.lock().await;
+                    contract
+                        .signed_call_with_confirmations(
+                            "refundBounty",
+                            token.clone(),
+                            opt,
+                            1,
+                            &secretkey,
+                        )
+                        .await?
+                };
                 println!("refundBounty ok");
                 Ok(result)
             }
