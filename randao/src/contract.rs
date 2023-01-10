@@ -3,14 +3,19 @@ use secp256k1::SecretKey as SecretKey2;
 use std::str::FromStr;
 use web3::contract::tokens::Tokenize;
 use web3::futures::lock::Mutex;
+use web3::types::H256;
 use web3::{
     self,
     api::Eth,
     contract::{tokens::Tokenizable, Contract, Options},
     ethabi::Token,
     transports::Http,
-    types::{TransactionReceipt, H160, U256},
+    types::{BlockNumber, TransactionReceipt, H160, U256},
 };
+
+
+
+
 
 lazy_static! {
     pub static ref PRIKEY_CONTRACT_LOCK: Mutex<()> = Mutex::new(());
@@ -114,7 +119,7 @@ impl RandaoContract {
         args: NewCampaignData,
     ) -> web3::contract::Result<TransactionReceipt> {
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
-        let contract = Contract::from_json(eth, contr_addr, self.abi_content.as_bytes())?;
+        let contract = Contract::from_json(eth.clone(), contr_addr, self.abi_content.as_bytes())?;
         let secretkey = SecretKey2::from_str(&self.sec_key).unwrap();
 
         let opt = Options {
@@ -130,6 +135,8 @@ impl RandaoContract {
                 .signed_call_with_confirmations("newCampaign", args, opt, 1, &secretkey)
                 .await?
         };
+
+        println!("new_campaign ok");
         Ok(result)
     }
 
@@ -141,7 +148,7 @@ impl RandaoContract {
         campaign_id: u128,
         deposit: u128,
         follow_sec_key: &str,
-    ) -> web3::contract::Result<TransactionReceipt> {
+    ) -> web3::contract::Result<H256> {
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
         let contract = Contract::from_json(eth.clone(), contr_addr, self.abi_content.as_bytes())?;
         let secretkey = SecretKey2::from_str(follow_sec_key).unwrap();
@@ -154,21 +161,27 @@ impl RandaoContract {
             .await;
         match result {
             Ok(_) => {
-                let opt = Options {
+                let mut opt = Options {
                     gas: Some(gas.into()),
                     gas_price: Some(gas_price.into()),
                     value: Some(deposit.into()),
                     ..Default::default()
                 };
 
-                let result = {
+                let hash = {
                     let _guard = PRIKEY_CONTRACT_LOCK.lock().await;
+                    opt.nonce = Some(eth.transaction_count(root_addr, Some(BlockNumber::Pending))
+                    .await?);
                     contract
-                        .signed_call_with_confirmations("follow", token_id, opt, 1, &secretkey)
+                        .signed_call("follow", token_id, opt, &secretkey)
                         .await?
                 };
-                println!("follow ok");
-                Ok(result)
+                // let result = eth
+                //     .transaction_receipt(hash)
+                //     .await?
+                //     .expect("transaction_receipt error");
+                println!("follow signed_call ok");
+                Ok(hash)
             }
             Err(e) => {
                 let info = self
@@ -253,7 +266,7 @@ impl RandaoContract {
         deposit: u128,
         commit_sec_key: &str,
         _hs: Vec<u8>,
-    ) -> web3::contract::Result<TransactionReceipt> {
+    ) -> web3::contract::Result<H256> {
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
         let contract = Contract::from_json(eth.clone(), contr_addr, self.abi_content.as_bytes())?;
         let secretkey = SecretKey2::from_str(commit_sec_key).unwrap();
@@ -273,20 +286,26 @@ impl RandaoContract {
             .await;
         match result {
             Ok(_) => {
-                let opt = Options {
+                let mut opt = Options {
                     gas: Some(self.gas.into()),
                     gas_price: Some(self.gas_price.into()),
                     value: Some(deposit.into()),
                     ..Default::default()
                 };
-                let result = {
+                let hash = {
                     let _guard = PRIKEY_CONTRACT_LOCK.lock().await;
+                    opt.nonce = Some(eth.transaction_count(root_addr, Some(BlockNumber::Pending))
+                    .await?);
                     contract
-                        .signed_call_with_confirmations("commit", token.clone(), opt, 1, &secretkey)
+                        .signed_call("commit", token.clone(), opt, &secretkey)
                         .await?
                 };
-                println!("commit ok");
-                Ok(result)
+                // let result = eth
+                //     .transaction_receipt(hash)
+                //     .await?
+                //     .expect("transaction_receipt error");
+                println!("commit signed_call ok");
+                Ok(hash)
             }
             Err(e) => {
                 let info = self
@@ -304,12 +323,12 @@ impl RandaoContract {
         campaign_id: u128,
         commit_sec_key: &str,
         _s: &str,
-    ) -> web3::contract::Result<TransactionReceipt> {
+    ) -> web3::contract::Result<H256> {
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
         let contract = Contract::from_json(eth.clone(), contr_addr, self.abi_content.as_bytes())?;
         let secretkey = SecretKey2::from_str(commit_sec_key).unwrap();
         let (_root_sk, root_addr) = extract_keypair_from_str(commit_sec_key.to_string());
-        let opt = Options {
+        let mut opt = Options {
             gas: Some(self.gas.into()),
             gas_price: Some(self.gas_price.into()),
             ..Default::default()
@@ -324,14 +343,20 @@ impl RandaoContract {
             .await;
         match result {
             Ok(_) => {
-                let result = {
+                let hash = {
                     let _guard = PRIKEY_CONTRACT_LOCK.lock().await;
+                    opt.nonce = Some(eth.transaction_count(root_addr, Some(BlockNumber::Pending))
+                    .await?);
                     contract
-                        .signed_call_with_confirmations("reveal", token.clone(), opt, 1, &secretkey)
+                        .signed_call("reveal", token.clone(), opt, &secretkey)
                         .await?
                 };
-                println!("reveal ok");
-                Ok(result)
+                // let result = eth
+                //     .transaction_receipt(hash)
+                //     .await?
+                //     .expect("transaction_receipt error");
+                println!("reveal signed_call ok");
+                Ok(hash)
             }
             Err(e) => {
                 let info = self
@@ -348,12 +373,12 @@ impl RandaoContract {
         eth: Eth<Http>,
         campaign_id: u128,
         sec_key: &str,
-    ) -> web3::contract::Result<TransactionReceipt> {
+    ) -> web3::contract::Result<H256> {
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
         let contract = Contract::from_json(eth.clone(), contr_addr, self.abi_content.as_bytes())?;
         let secretkey = SecretKey2::from_str(sec_key).unwrap();
         let (_root_sk, root_addr) = extract_keypair_from_str(sec_key.to_string());
-        let opt = Options {
+        let mut opt = Options {
             gas: Some(self.gas.into()),
             gas_price: Some(self.gas_price.into()),
             ..Default::default()
@@ -365,20 +390,20 @@ impl RandaoContract {
             .await;
         match result {
             Ok(_) => {
-                let result = {
+                let hash = {
                     let _guard = PRIKEY_CONTRACT_LOCK.lock().await;
+                    opt.nonce = Some(eth.transaction_count(root_addr, Some(BlockNumber::Pending))
+                    .await?);
                     contract
-                        .signed_call_with_confirmations(
-                            "refundBounty",
-                            token.clone(),
-                            opt,
-                            1,
-                            &secretkey,
-                        )
+                        .signed_call("refundBounty", token.clone(), opt, &secretkey)
                         .await?
                 };
-                println!("refundBounty ok");
-                Ok(result)
+                // let result = eth
+                //     .transaction_receipt(hash)
+                //     .await?
+                //     .expect("transaction_receipt error");
+                println!("refundBounty signed_call ok");
+                Ok(hash)
             }
             Err(e) => {
                 let info = self.get_campaign_info(eth, campaign_id, sec_key).await?;

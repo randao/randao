@@ -207,7 +207,7 @@ fn run_main() -> Result<U256, Error> {
     let block = client_arc.current_block().unwrap();
 
     //test
-    // contract_new_campaign(&client_arc);
+    contract_new_campaign(&client_arc);
 
     if chain_id.to_string() != client_arc.config.chain.chain_id {
         return Err(Error::CheckChainErr);
@@ -231,21 +231,20 @@ fn run_main() -> Result<U256, Error> {
     let max_thds_cnt: usize = num_cpus::get() * 2;
     let mut check_cnt: u8 = 0;
 
-    let mut uuids;
-    {
+    let mut uuids = {
         let _guard = MUTEX
             .lock()
             .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?;
-        uuids = read_uuids().or_else(|e| {
+        read_uuids().or_else(|e| {
             error!("Error loading UUID file: {:?}", e);
             Ok(Vec::new())
-        })?;
-    }
+        })?
+    };
     info!("uuids {:?}", uuids);
 
     while !STOP.load(Order::SeqCst) {
         //test
-        // contract_new_campaign(&client_arc);
+        contract_new_campaign(&client_arc);
         let local_client = client_arc.clone();
 
         let new_campaign_num = match local_client.contract_campaign_num() {
@@ -271,24 +270,23 @@ fn run_main() -> Result<U256, Error> {
             }
 
             let mut uuid = Uuid::new_v4().to_string();
-            let is_new_uuid;
-            {
+            let is_new_uuid = {
                 let _guard = MUTEX.lock().unwrap();
                 if uuids.is_empty() {
                     store_uuid(&Uuid::from_str(uuid.as_str()).unwrap()).unwrap();
-                    is_new_uuid = true;
+                    true
                 } else {
                     uuid = uuids.pop().unwrap().to_string();
-                    is_new_uuid = false;
+                    false
                 }
-            }
+            };
 
             let t = thread::spawn(move || {
                 let mut work_thd;
                 if is_new_uuid {
                     work_thd = WorkThd::new(
                         uuid.clone(),
-                        campaign_id.clone(),
+                        campaign_id,
                         info,
                         &local_client,
                         local_client.config.clone(),
@@ -346,7 +344,7 @@ fn run_main() -> Result<U256, Error> {
     return Ok(U256::from(1));
 }
 
-fn _contract_new_campaign(client: &BlockClient) -> Option<TransactionReceipt> {
+fn contract_new_campaign(client: &BlockClient) -> Option<TransactionReceipt> {
     let block_num = client.block_number().unwrap();
     let bnum = block_num.as_u64() + 20;
     let commit_balkline: u128 = 16;

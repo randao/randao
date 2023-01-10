@@ -373,7 +373,7 @@ impl BlockClient {
         campaign_id: u128,
         deposit: u128,
         follow_sec_key: &str,
-    ) -> Option<TransactionReceipt> {
+    ) -> Option<H256> {
         self.rt.block_on(async {
             let eth = (*self.eth.clone()).clone();
             let result = self
@@ -462,7 +462,7 @@ impl BlockClient {
         deposit: u128,
         commit_sec_key: &str,
         _hs: Vec<u8>,
-    ) -> Option<TransactionReceipt> {
+    ) -> Option<H256> {
         self.rt.block_on(async {
             let eth = (*self.eth.clone()).clone();
             let result = self
@@ -471,9 +471,10 @@ impl BlockClient {
                 .await;
             let value = match result {
                 Ok(v) => {
-                    if v.status.unwrap() == U64::zero() {
-                        println!("commit receipt:{:?}", v);
-                    }
+                    // if v.status.unwrap() == U64::zero() {
+                    //     println!("commit receipt:{:?}", v);
+                    // }
+                    println!("commit hash:{:?}", v);
                     Some(v)
                 }
                 Err(e) => {
@@ -491,7 +492,7 @@ impl BlockClient {
         _deposit: u128,
         commit_sec_key: &str,
         _s: &str,
-    ) -> Option<TransactionReceipt> {
+    ) -> Option<H256> {
         self.rt.block_on(async {
             let eth = (*self.eth.clone()).clone();
             let result = self
@@ -500,9 +501,10 @@ impl BlockClient {
                 .await;
             let value = match result {
                 Ok(v) => {
-                    if v.status.unwrap() == U64::zero() {
-                        println!("reveal receipt:{:?}", v);
-                    }
+                    // if v.status.unwrap() == U64::zero() {
+                    //     println!("reveal receipt:{:?}", v);
+                    // }
+                    println!("reveal hash:{:?}", v);
                     Some(v)
                 }
                 Err(e) => {
@@ -514,11 +516,7 @@ impl BlockClient {
         })
     }
 
-    pub fn contract_refund_bounty(
-        &self,
-        campaign_id: u128,
-        sec_key: &str,
-    ) -> Option<TransactionReceipt> {
+    pub fn contract_refund_bounty(&self, campaign_id: u128, sec_key: &str) -> Option<H256> {
         self.rt.block_on(async {
             let eth = (*self.eth.clone()).clone();
             let result = self
@@ -527,9 +525,10 @@ impl BlockClient {
                 .await;
             let value = match result {
                 Ok(v) => {
-                    if v.status.unwrap() == U64::zero() {
-                        println!("contract_refund_bounty receipt:{:?}", v);
-                    }
+                    // if v.status.unwrap() == U64::zero() {
+                    //     println!("contract_refund_bounty receipt:{:?}", v);
+                    // }
+                    println!("contract_refund_bounty hash:{:?}", v);
                     Some(v)
                 }
                 Err(e) => {
@@ -576,6 +575,30 @@ impl BlockClient {
             value
         })
     }
+
+    pub fn contract_comfirm_and_get_receipt(&self, hash: H256) -> Option<TransactionReceipt> {
+        self.rt.block_on(async {
+            let result = self.eth.transaction_receipt(hash).await;
+            let value = match result {
+                Ok(Some(v)) => {
+                    if v.status.unwrap() == U64::zero() {
+                        println!("contract_comfirm_and_get_receipt contract receipt:{:?}", v);
+                    }
+                    println!("contract_comfirm_and_get_receipt contract hash:{:?}", v);
+                    Some(v)
+                }
+                Ok(None) => {
+                    println!("contract_comfirm_and_get_receipt contract error");
+                    None
+                }
+                Err(e) => {
+                    println!("contract_comfirm_and_get_receipt call failed: {:?}", e);
+                    None
+                }
+            };
+            value
+        })
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -586,6 +609,7 @@ struct TaskStatus {
     _s: String,
     campaign_id: u128,
     campaign_info: CampaignInfo,
+    tx_hash: H256,
 }
 
 pub struct WorkThd {
@@ -614,7 +638,11 @@ impl WorkThd {
         }
     }
 
-    pub fn new_from_uuid(uuid: String, cli: &BlockClient, _cfg: Config) -> WorkThd {
+    pub fn new_from_uuid(
+        uuid: String,
+        cli: &BlockClient,
+        _cfg: Config,
+    ) -> WorkThd {
         // 1)
         WorkThd {
             uuid,
@@ -633,6 +661,7 @@ impl WorkThd {
             _s: String::new(),
             campaign_id: 0u128,
             campaign_info: Default::default(),
+            tx_hash: H256::zero(),
         };
 
         let status_path_str = RANDAO_PATH.to_string() + &self.uuid + ".json";
@@ -731,7 +760,7 @@ impl WorkThd {
                 );
             }
 
-            let commit_tx_receipt = self
+            let commit_tx_hash = self
                 .cli
                 .contract_commit(
                     task_status.campaign_id,
@@ -741,9 +770,13 @@ impl WorkThd {
                 )
                 .ok_or(anyhow::format_err!("commit err"))
                 .and_then(|v| {
+                    // info!(
+                    //     "Commit succeed, campaignID={:?}, tx={:?} gasPrice={:?}",
+                    //     task_status.campaign_id, v.transaction_hash, v.gas_used
+                    // );
                     info!(
-                        "Commit succeed, campaignID={:?}, tx={:?} gasPrice={:?}",
-                        task_status.campaign_id, v.transaction_hash, v.gas_used
+                        "Commit succeed, campaignID={:?}, tx={:?}",
+                        task_status.campaign_id, v
                     );
                     Ok(v)
                 })
@@ -755,9 +788,10 @@ impl WorkThd {
                     );
                     Err(e)
                 })?;
-            info!("commit transaction receipt :{:?}", commit_tx_receipt);
+            info!("commit transaction hash :{:?}", commit_tx_hash);
 
             task_status.step = 2;
+            task_status.tx_hash = commit_tx_hash;
 
             status_file.rewind()?;
             status_file.write_all(serde_json::to_string(&task_status)?.as_bytes())?;
@@ -786,8 +820,18 @@ impl WorkThd {
                         .as_u64(),
                 );
             }
+            let commit_tx_receipt = self
+                .cli
+                .contract_comfirm_and_get_receipt(task_status.tx_hash)
+                .ok_or(anyhow::format_err!("get_receipt error"))?;
+            info!(
+                "Commit succeed, campaignID={:?}, tx={:?} gasPrice={:?}",
+                task_status.campaign_id,
+                commit_tx_receipt.transaction_hash,
+                commit_tx_receipt.gas_used
+            );
 
-            let reveal_tx_receipt = self
+            let reveal_tx_hash = self
                 .cli
                 .contract_reveal(
                     task_status.campaign_id,
@@ -797,9 +841,13 @@ impl WorkThd {
                 )
                 .ok_or(anyhow::format_err!("reveal err"))
                 .and_then(|v| {
+                    // info!(
+                    //     "Reveal succeed, campaignID={:?}, tx={:?} gasPrice={:?}",
+                    //     task_status.campaign_id, v.transaction_hash, v.gas_used
+                    // );
                     info!(
-                        "Reveal succeed, campaignID={:?}, tx={:?} gasPrice={:?}",
-                        task_status.campaign_id, v.transaction_hash, v.gas_used
+                        "Reveal succeed, campaignID={:?}, tx={:?}",
+                        task_status.campaign_id, v
                     );
                     Ok(v)
                 })
@@ -812,9 +860,10 @@ impl WorkThd {
                     );
                     Err(e)
                 })?;
-            info!("reveal transaction receipt :{:?}", reveal_tx_receipt);
+            info!("reveal transaction receipt :{:?}", reveal_tx_hash);
 
             task_status.step = 3;
+            task_status.tx_hash = reveal_tx_hash;
 
             status_file.rewind()?;
             status_file.write_all(serde_json::to_string(&task_status)?.as_bytes())?;
@@ -841,6 +890,16 @@ impl WorkThd {
                         .as_u64(),
                 );
             }
+            let commit_tx_receipt = self
+                .cli
+                .contract_comfirm_and_get_receipt(task_status.tx_hash)
+                .ok_or(anyhow::format_err!("get_receipt error"))?;
+            info!(
+                "Reveal succeed, campaignID={:?}, tx={:?} gasPrice={:?}",
+                task_status.campaign_id,
+                commit_tx_receipt.transaction_hash,
+                commit_tx_receipt.gas_used
+            );
 
             let randao_num = self
                 .cli
