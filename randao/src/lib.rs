@@ -47,7 +47,7 @@ use web3::{
 const _FRC20_ADDRESS: u64 = 0x1000;
 pub const BLOCK_TIME: u64 = 16;
 
-pub const RANDAO_PATH: &str = "/tmp/.randao/uuid/";
+pub const RANDAO_PATH: &str = "/tmp/.randao/campaigns/";
 // pub const CONF_PATH: &str = "/tmp/.randao/config/config.json";
 pub const KEY_PATH: &str = "/tmp/.randao/keys/";
 lazy_static! {
@@ -613,8 +613,7 @@ struct TaskStatus {
 }
 
 pub struct WorkThd {
-    uuid: String,
-    campaign_id: Option<u128>,
+    campaign_id: u128,
     campaign_info: Option<CampaignInfo>,
     cli: BlockClient,
     _cfg: Config,
@@ -622,7 +621,6 @@ pub struct WorkThd {
 
 impl WorkThd {
     pub fn new(
-        uuid: String,
         campaign_id: u128,
         campaign_info: CampaignInfo,
         cli: &BlockClient,
@@ -630,30 +628,28 @@ impl WorkThd {
     ) -> WorkThd {
         // 1)
         WorkThd {
-            uuid,
-            campaign_id: Some(campaign_id),
+            campaign_id,
             campaign_info: Some(campaign_info),
             cli: cli.clone(),
             _cfg,
         }
     }
 
-    pub fn new_from_uuid(
-        uuid: String,
+    pub fn new_from_campaign_id(
+        campaign_id: u128,
         cli: &BlockClient,
         _cfg: Config,
     ) -> WorkThd {
         // 1)
         WorkThd {
-            uuid,
-            campaign_id: None,
+            campaign_id,
             campaign_info: None,
             cli: cli.clone(),
             _cfg,
         }
     }
 
-    pub fn do_task(&mut self) -> anyhow::Result<(String, u128, U256, U256)> {
+    pub fn do_task(&mut self) -> anyhow::Result<(u128, U256, U256)> {
         let mut task_status = TaskStatus {
             step: 0,
             hs: Vec::new(),
@@ -664,13 +660,13 @@ impl WorkThd {
             tx_hash: H256::zero(),
         };
 
-        let status_path_str = RANDAO_PATH.to_string() + &self.uuid + ".json";
+        let status_path_str = RANDAO_PATH.to_string() + &self.campaign_id.to_string() + ".json";
         let status_path = Path::new(&status_path_str);
 
         let mut status_file;
         if status_path.exists() {
-            if self.campaign_id.is_some() || self.campaign_info.is_some() {
-                anyhow::bail!("uuid json exists, but call WorkThd::new() init!!!");
+            if self.campaign_info.is_some() {
+                anyhow::bail!("campaign_ids json exists, but call WorkThd::new() init!!!");
             }
 
             if status_path.is_file() {
@@ -683,14 +679,14 @@ impl WorkThd {
                 status_file.read_to_string(&mut status_str)?;
                 task_status = serde_json::from_str(&status_str[..])?;
             } else {
-                anyhow::bail!("uuid json file is not file!!!");
+                anyhow::bail!("campaign_ids json file is not file!!!");
             }
         } else {
-            if self.campaign_id.is_none() || self.campaign_info.is_none() {
-                anyhow::bail!("uuid json not exists, but call WorkThd::new_from_uuid() init!!!");
+            if self.campaign_info.is_none() {
+                anyhow::bail!("campaign_ids json not exists, but call WorkThd::new_from_campaign_id() init!!!");
             }
 
-            task_status.campaign_id = self.campaign_id.unwrap();
+            task_status.campaign_id = self.campaign_id;
             std::mem::swap(
                 &mut task_status.campaign_info,
                 self.campaign_info.as_mut().unwrap(),
@@ -967,7 +963,6 @@ impl WorkThd {
             ONGOING_CAMPAIGNS.dec();
 
             return Ok((
-                self.uuid.clone(),
                 task_status.campaign_id,
                 task_status.randao_num,
                 my_bounty,

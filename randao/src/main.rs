@@ -29,7 +29,6 @@ use randao::{
 use std::{
     fs::create_dir,
     path::{Path, PathBuf},
-    str::FromStr,
     sync::{
         atomic::{AtomicBool, Ordering as Order},
         Arc, Mutex,
@@ -37,7 +36,6 @@ use std::{
     thread::{self, sleep},
     time::Duration,
 };
-use uuid::Uuid;
 use web3::types::{TransactionReceipt, U256};
 
 const CHECK_CNT: u8 = 5;
@@ -231,16 +229,16 @@ fn run_main() -> Result<U256, Error> {
     let max_thds_cnt: usize = num_cpus::get() * 2;
     let mut check_cnt: u8 = 0;
 
-    let mut uuids = {
+    let mut campaign_ids = {
         let _guard = MUTEX
             .lock()
             .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?;
-        read_uuids().or_else(|e| {
-            error!("Error loading UUID file: {:?}", e);
+        read_campaign_ids().or_else(|e| {
+            error!("Error loading campaign_id file: {:?}", e);
             Ok(Vec::new())
         })?
     };
-    info!("uuids {:?}", uuids);
+    info!("campaign_ids {:?}", campaign_ids);
 
     while !STOP.load(Order::SeqCst) {
         //test
@@ -255,7 +253,7 @@ fn run_main() -> Result<U256, Error> {
         };
 
         if new_campaign_num > campaign_num {
-            let campaign_id = new_campaign_num.as_u128() - 1;
+            let mut campaign_id = new_campaign_num.as_u128() - 1;
             let info = local_client
                 .contract_get_campaign_info(campaign_id)
                 .unwrap();
@@ -269,31 +267,29 @@ fn run_main() -> Result<U256, Error> {
                 continue; //return Err(Error::CheckCampaignsInfoErr);
             }
 
-            let mut uuid = Uuid::new_v4().to_string();
-            let is_new_uuid = {
+            let is_new_campaign_id = {
                 let _guard = MUTEX.lock().unwrap();
-                if uuids.is_empty() {
-                    store_uuid(&Uuid::from_str(uuid.as_str()).unwrap()).unwrap();
+                if campaign_ids.is_empty() {
+                    store_campaign_id(campaign_id).unwrap();
                     true
                 } else {
-                    uuid = uuids.pop().unwrap().to_string();
+                    campaign_id = campaign_ids.pop().unwrap();
                     false
                 }
             };
 
             let t = thread::spawn(move || {
                 let mut work_thd;
-                if is_new_uuid {
+                if is_new_campaign_id {
                     work_thd = WorkThd::new(
-                        uuid.clone(),
                         campaign_id,
                         info,
                         &local_client,
                         local_client.config.clone(),
                     );
                 } else {
-                    work_thd = WorkThd::new_from_uuid(
-                        uuid.clone(),
+                    work_thd = WorkThd::new_from_campaign_id(
+                        campaign_id,
                         &local_client,
                         local_client.config.clone(),
                     );
@@ -303,11 +299,11 @@ fn run_main() -> Result<U256, Error> {
                     .do_task()
                     .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))
                 {
-                    Ok((uuid, campaign_id, randao_num, _my_bounty)) => {
+                    Ok((campaign_id, randao_num, _my_bounty)) => {
                         println!("work thread end success!!!");
                         info!(
-                            "uuid: {:?}, campaign_id:{:?},  randao:{:?}",
-                            uuid, campaign_id, randao_num
+                            "campaign_id:{:?},  randao:{:?}",
+                            campaign_id, randao_num
                         );
                     }
                     Err(e) => {
@@ -317,7 +313,7 @@ fn run_main() -> Result<U256, Error> {
 
                 {
                     let _guard = MUTEX.lock().unwrap();
-                    remove_uuid(&Uuid::from_str(uuid.as_str()).unwrap())
+                    remove_campaign_id(campaign_id)
                         .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?
                 }
                 Ok(())
@@ -460,10 +456,10 @@ fn test_contract_new_campaign() {
     client.contract_new_campaign(1000000, 10000000000, new_data);
     let campaign_id = client.contract_campaign_num().unwrap();
     assert!(campaign_id.as_u128() > 0);
-    let campaign = campaign_id.as_u128() - 1;
-    assert!(campaign > 0, "Campaign ID must be greater than 0");
+    let campaign_id = campaign_id.as_u128() - 1;
+    assert!(campaign_id > 0, "Campaign ID must be greater than 0");
 
-    let result = client.contract_follow(1000000, 10000000000, campaign, deposit, follower);
+    let result = client.contract_follow(1000000, 10000000000, campaign_id, deposit, follower);
     assert!(result.is_some());
 
     for _ in 0..1 {
@@ -471,27 +467,26 @@ fn test_contract_new_campaign() {
     }
     let _s = "131242344353464564564574574567456";
     let hs = client.contract_sha_commit(_s).unwrap();
-    client.contract_commit(campaign, deposit, consumer, hs);
+    client.contract_commit(campaign_id, deposit, consumer, hs);
     for _ in 0..1 {
         wait_blocks(&client);
     }
-    client.contract_reveal(campaign, deposit, consumer, _s);
-    let info = client.contract_get_campaign_info(campaign).unwrap();
+    client.contract_reveal(campaign_id, deposit, consumer, _s);
+    let info = client.contract_get_campaign_info(campaign_id).unwrap();
     println!("campaign info :{:?}", info);
     for _ in 0..1 {
         wait_blocks(&client);
     }
-    let randao_num = client.contract_get_random(campaign, consumer).unwrap();
+    let randao_num = client.contract_get_random(campaign_id, consumer).unwrap();
     println!("randao_num :{:?}", randao_num);
-    let my_bounty = client.contract_get_my_bounty(campaign, consumer).unwrap();
+    let my_bounty = client.contract_get_my_bounty(campaign_id, consumer).unwrap();
     println!("my_bounty :{:?}", my_bounty);
 
-    let uuid = Uuid::new_v4().to_string();
-    let mut work_thd = WorkThd::new(uuid, campaign, info, &client, config);
-    let (uuid, campaign_id, randao_num, my_bounty) = work_thd.do_task().unwrap();
+    let mut work_thd = WorkThd::new(campaign_id, info, &client, config);
+    let (campaign_id, randao_num, my_bounty) = work_thd.do_task().unwrap();
 
     println!(
-        "uuid: {:?} campaign_id: {:?} randao_num: {:?} my_bounty :{:?}",
-        uuid, campaign_id, randao_num, my_bounty
+        "campaign_id: {:?} randao_num: {:?} my_bounty :{:?}",
+        campaign_id, randao_num, my_bounty
     );
 }

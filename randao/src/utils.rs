@@ -13,7 +13,6 @@ use web3::types::{Address, H256};
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::Path;
-use uuid::Uuid;
 
 #[inline(always)]
 pub fn extract_keypair_from_config(config: &Config) -> (secp256k1::SecretKey, Address) {
@@ -110,32 +109,32 @@ pub fn check_campaign_info(
     false
 }
 
-pub fn store_uuid(uuid: &Uuid) -> Result<(), std::io::Error> {
+pub fn store_campaign_id(campaign_id: u128) -> Result<(), std::io::Error> {
     fs::create_dir_all(RANDAO_PATH)?;
-    let path = RANDAO_PATH.to_string() + "uuids.txt";
+    let path = RANDAO_PATH.to_string() + "campaign_ids.txt";
     let path = Path::new(&(path));
     if !path.exists() {
         File::create(path)?;
     }
     let mut file = OpenOptions::new().append(true).open(&path)?;
 
-    writeln!(file, "{}", uuid)?;
+    writeln!(file, "{}", campaign_id)?;
     Ok(())
 }
 
-pub fn remove_uuid(uuid: &Uuid) -> Result<(), std::io::Error> {
-    let mut uuids = read_uuids().unwrap();
-    let path = RANDAO_PATH.to_string() + "uuids.txt";
-    uuids.retain(|u| u != uuid);
+pub fn remove_campaign_id(campaign_id: u128) -> Result<(), std::io::Error> {
+    let mut campaign_ids = read_campaign_ids().unwrap();
+    let path = RANDAO_PATH.to_string() + "campaign_ids.txt";
+    campaign_ids.retain(|u| *u != campaign_id);
     let mut file = OpenOptions::new().write(true).truncate(true).open(&path)?;
-    for uuid in uuids {
-        writeln!(file, "{}", uuid)?;
+    for campaign_id in campaign_ids {
+        writeln!(file, "{}", campaign_id)?;
     }
     Ok(())
 }
 
-pub fn read_uuids() -> Result<Vec<Uuid>, std::io::Error> {
-    let path = RANDAO_PATH.to_string() + "uuids.txt";
+pub fn read_campaign_ids() -> Result<Vec<u128>, std::io::Error> {
+    let path = RANDAO_PATH.to_string() + "campaign_ids.txt";
     let mut file = File::open(&path)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
@@ -143,20 +142,20 @@ pub fn read_uuids() -> Result<Vec<Uuid>, std::io::Error> {
     if contents.len() == 0 {
         return Ok(Vec::new());
     }
-    let uuid_strings: Vec<&str> = contents.split('\n').collect();
-    let mut uuids = Vec::new();
-    for uuid_string in uuid_strings {
-        if uuid_string.is_empty() {
+    let campaign_id_strings: Vec<&str> = contents.split('\n').collect();
+    let mut campaign_ids = Vec::new();
+    for campaign_id_string in campaign_id_strings {
+        if campaign_id_string.is_empty() {
             continue;
         }
-        let uuid = Uuid::from_str(uuid_string).unwrap();
-        uuids.push(uuid);
+        let campaign_id = campaign_id_string.parse::<u128>().unwrap();
+        campaign_ids.push(campaign_id);
     }
-    Ok(uuids)
+    Ok(campaign_ids)
 }
 
-pub fn delete_all_uuids() -> Result<(), std::io::Error> {
-    let path = RANDAO_PATH.to_string() + "uuids.txt";
+pub fn delete_all_campaign_ids() -> Result<(), std::io::Error> {
+    let path = RANDAO_PATH.to_string() + "campaign_ids.txt";
     let mut file = OpenOptions::new().write(true).truncate(true).open(&path)?;
     file.write_all(b"")?;
     fs::remove_file(path)?;
@@ -164,27 +163,27 @@ pub fn delete_all_uuids() -> Result<(), std::io::Error> {
     Ok(())
 }
 #[test]
-fn test_uuid_store_and_remove() {
-    let uuid1 = Uuid::new_v4();
-    let uuid2 = Uuid::new_v4();
-    let uuid3 = Uuid::new_v4();
+fn test_campaign_id_store_and_remove() {
+    let campaign_id1 = 1u128;
+    let campaign_id2 = 2u128;
+    let campaign_id3 = 3u128;
 
-    store_uuid(&uuid1).unwrap();
-    store_uuid(&uuid2).unwrap();
-    store_uuid(&uuid3).unwrap();
+    store_campaign_id(campaign_id1).unwrap();
+    store_campaign_id(campaign_id2).unwrap();
+    store_campaign_id(campaign_id3).unwrap();
 
-    let uuids = read_uuids().unwrap();
-    assert_eq!(uuids.len(), 3);
-    assert!(uuids.contains(&uuid1));
-    assert!(uuids.contains(&uuid2));
-    assert!(uuids.contains(&uuid3));
+    let campaign_ids = read_campaign_ids().unwrap();
+    assert_eq!(campaign_ids.len(), 3);
+    assert!(campaign_ids.contains(&campaign_id1));
+    assert!(campaign_ids.contains(&campaign_id2));
+    assert!(campaign_ids.contains(&campaign_id3));
 
-    remove_uuid(&uuid2).unwrap();
+    remove_campaign_id(campaign_id2).unwrap();
 
-    let uuids = read_uuids().unwrap();
-    assert_eq!(uuids.len(), 2);
-    assert!(uuids.contains(&uuid1));
-    assert!(!uuids.contains(&uuid2));
-    assert!(uuids.contains(&uuid3));
-    let _ = delete_all_uuids();
+    let campaign_ids = read_campaign_ids().unwrap();
+    assert_eq!(campaign_ids.len(), 2);
+    assert!(campaign_ids.contains(&campaign_id1));
+    assert!(!campaign_ids.contains(&campaign_id2));
+    assert!(campaign_ids.contains(&campaign_id3));
+    let _ = delete_all_campaign_ids();
 }
