@@ -635,11 +635,7 @@ impl WorkThd {
         }
     }
 
-    pub fn new_from_campaign_id(
-        campaign_id: u128,
-        cli: &BlockClient,
-        _cfg: Config,
-    ) -> WorkThd {
+    pub fn new_from_campaign_id(campaign_id: u128, cli: &BlockClient, _cfg: Config) -> WorkThd {
         // 1)
         WorkThd {
             campaign_id,
@@ -962,11 +958,7 @@ impl WorkThd {
 
             ONGOING_CAMPAIGNS.dec();
 
-            return Ok((
-                task_status.campaign_id,
-                task_status.randao_num,
-                my_bounty,
-            ));
+            return Ok((task_status.campaign_id, task_status.randao_num, my_bounty));
         }
 
         anyhow::bail!("task status step error!!!")

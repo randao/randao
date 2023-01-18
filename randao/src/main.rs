@@ -210,12 +210,6 @@ fn run_main() -> Result<U256, Error> {
     if chain_id.to_string() != client_arc.config.chain.chain_id {
         return Err(Error::CheckChainErr);
     }
-    let campaign_num = match client_arc.contract_campaign_num() {
-        None => {
-            return Err(Error::GetNumCampaignsErr);
-        }
-        Some(num) => num,
-    };
     info!(
         "chain_name:{:?}, chain_id:{:?}, block_num, endpoind:{:?}, campaigns_num:{:?}, randao:{:?}",
         client_arc.config.chain.name,
@@ -240,6 +234,18 @@ fn run_main() -> Result<U256, Error> {
     };
     info!("campaign_ids {:?}", campaign_ids);
 
+    let mut campaign_num = if !campaign_ids.is_empty() {
+        let mut max_campagin_id = 0;
+        for campaign_id in campaign_ids.clone() {
+            if campaign_id > max_campagin_id {
+                max_campagin_id = campaign_id;
+            }
+        }
+        U256::from(max_campagin_id + 1)
+    } else {
+        U256::from(0)
+    };
+
     while !STOP.load(Order::SeqCst) {
         //test
         contract_new_campaign(&client_arc);
@@ -252,7 +258,11 @@ fn run_main() -> Result<U256, Error> {
             Some(num) => num,
         };
 
-        if new_campaign_num > campaign_num {
+        if new_campaign_num > campaign_num || !campaign_ids.is_empty() {
+            if campaign_ids.is_empty() {
+                campaign_num = new_campaign_num;
+            }
+
             let mut campaign_id = new_campaign_num.as_u128() - 1;
             let info = local_client
                 .contract_get_campaign_info(campaign_id)
@@ -262,10 +272,10 @@ fn run_main() -> Result<U256, Error> {
                     .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?
             {
                 handle_vec
-                .pop()
-                .unwrap()
-                .join()
-                .map_err(|e| Error::Unknown(format!("{:?}", e)))??;
+                    .pop()
+                    .unwrap()
+                    .join()
+                    .map_err(|e| Error::Unknown(format!("{:?}", e)))??;
 
                 println!("thread count greater than max campaign");
                 continue; //return Err(Error::GetNumCampaignsErr);
@@ -309,10 +319,7 @@ fn run_main() -> Result<U256, Error> {
                 {
                     Ok((campaign_id, randao_num, _my_bounty)) => {
                         println!("work thread end success!!!");
-                        info!(
-                            "campaign_id:{:?},  randao:{:?}",
-                            campaign_id, randao_num
-                        );
+                        info!("campaign_id:{:?},  randao:{:?}", campaign_id, randao_num);
                     }
                     Err(e) => {
                         println!("work thread err: {:?}", e);
@@ -487,7 +494,9 @@ fn test_contract_new_campaign() {
     }
     let randao_num = client.contract_get_random(campaign_id, consumer).unwrap();
     println!("randao_num :{:?}", randao_num);
-    let my_bounty = client.contract_get_my_bounty(campaign_id, consumer).unwrap();
+    let my_bounty = client
+        .contract_get_my_bounty(campaign_id, consumer)
+        .unwrap();
     println!("my_bounty :{:?}", my_bounty);
 
     let mut work_thd = WorkThd::new(campaign_id, info, &client, config);

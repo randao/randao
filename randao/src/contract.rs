@@ -13,10 +13,6 @@ use web3::{
     types::{BlockNumber, TransactionReceipt, H160, U256},
 };
 
-
-
-
-
 lazy_static! {
     pub static ref PRIKEY_CONTRACT_LOCK: Mutex<()> = Mutex::new(());
 }
@@ -170,8 +166,10 @@ impl RandaoContract {
 
                 let hash = {
                     let _guard = PRIKEY_CONTRACT_LOCK.lock().await;
-                    opt.nonce = Some(eth.transaction_count(root_addr, Some(BlockNumber::Pending))
-                    .await?);
+                    opt.nonce = Some(
+                        eth.transaction_count(root_addr, Some(BlockNumber::Pending))
+                            .await?,
+                    );
                     contract
                         .signed_call("follow", token_id, opt, &secretkey)
                         .await?
@@ -294,8 +292,10 @@ impl RandaoContract {
                 };
                 let hash = {
                     let _guard = PRIKEY_CONTRACT_LOCK.lock().await;
-                    opt.nonce = Some(eth.transaction_count(root_addr, Some(BlockNumber::Pending))
-                    .await?);
+                    opt.nonce = Some(
+                        eth.transaction_count(root_addr, Some(BlockNumber::Pending))
+                            .await?,
+                    );
                     contract
                         .signed_call("commit", token.clone(), opt, &secretkey)
                         .await?
@@ -345,8 +345,10 @@ impl RandaoContract {
             Ok(_) => {
                 let hash = {
                     let _guard = PRIKEY_CONTRACT_LOCK.lock().await;
-                    opt.nonce = Some(eth.transaction_count(root_addr, Some(BlockNumber::Pending))
-                    .await?);
+                    opt.nonce = Some(
+                        eth.transaction_count(root_addr, Some(BlockNumber::Pending))
+                            .await?,
+                    );
                     contract
                         .signed_call("reveal", token.clone(), opt, &secretkey)
                         .await?
@@ -392,8 +394,10 @@ impl RandaoContract {
             Ok(_) => {
                 let hash = {
                     let _guard = PRIKEY_CONTRACT_LOCK.lock().await;
-                    opt.nonce = Some(eth.transaction_count(root_addr, Some(BlockNumber::Pending))
-                    .await?);
+                    opt.nonce = Some(
+                        eth.transaction_count(root_addr, Some(BlockNumber::Pending))
+                            .await?,
+                    );
                     contract
                         .signed_call("refundBounty", token.clone(), opt, &secretkey)
                         .await?
