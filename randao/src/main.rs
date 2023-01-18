@@ -38,7 +38,7 @@ use std::{
 };
 use web3::types::{TransactionReceipt, U256};
 
-const CHECK_CNT: u8 = 5;
+// const CHECK_CNT: u8 = 5;
 
 lazy_static! {
     static ref STOP: AtomicBool = AtomicBool::new(false);
@@ -226,8 +226,8 @@ fn run_main() -> Result<U256, Error> {
     );
 
     let mut handle_vec: Vec<std::thread::JoinHandle<Result<(), Error>>> = Vec::new();
-    let max_thds_cnt: usize = num_cpus::get() * 2;
-    let mut check_cnt: u8 = 0;
+    // let max_thds_cnt: usize = num_cpus::get() * 2;
+    // let mut check_cnt: u8 = 0;
 
     let mut campaign_ids = {
         let _guard = MUTEX
@@ -258,12 +258,20 @@ fn run_main() -> Result<U256, Error> {
                 .contract_get_campaign_info(campaign_id)
                 .unwrap();
             if local_client.config.chain.opts.max_campaigns
-                <= i32::try_from(new_campaign_num)
+                <= i32::try_from(handle_vec.len())
                     .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?
             {
-                break; //return Err(Error::GetNumCampaignsErr);
+                handle_vec
+                .pop()
+                .unwrap()
+                .join()
+                .map_err(|e| Error::Unknown(format!("{:?}", e)))??;
+
+                println!("thread count greater than max campaign");
+                continue; //return Err(Error::GetNumCampaignsErr);
             }
             if !check_campaign_info(&local_client, &info, &local_client.config) {
+                println!("campaign info is incorrect");
                 continue; //return Err(Error::CheckCampaignsInfoErr);
             }
 
@@ -320,17 +328,17 @@ fn run_main() -> Result<U256, Error> {
             });
             handle_vec.push(t);
 
-            check_cnt += 1;
-            if check_cnt == CHECK_CNT {
-                while handle_vec.len() > max_thds_cnt {
-                    handle_vec
-                        .pop()
-                        .unwrap()
-                        .join()
-                        .map_err(|e| Error::Unknown(format!("{:?}", e)))??;
-                }
-                check_cnt = 0;
-            }
+            // check_cnt += 1;
+            // if check_cnt == CHECK_CNT {
+            //     while handle_vec.len() > max_thds_cnt {
+            //         handle_vec
+            //             .pop()
+            //             .unwrap()
+            //             .join()
+            //             .map_err(|e| Error::Unknown(format!("{:?}", e)))??;
+            //     }
+            //     check_cnt = 0;
+            // }
         }
         sleep(Duration::from_millis(5000));
     }
