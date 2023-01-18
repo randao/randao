@@ -191,25 +191,6 @@ impl RandaoContract {
         }
     }
 
-    pub async fn gas_new_campaign(
-        &self,
-        eth: Eth<Http>,
-        _gas: u32,
-        _gas_price: u128,
-        args: NewCampaignData,
-    ) -> web3::contract::Result<U256> {
-        let contr_addr: H160 = self.contract_addr.parse().unwrap();
-        let contract = Contract::from_json(eth, contr_addr, self.abi_content.as_bytes())?;
-        let (_root_sk, root_addr) = extract_keypair_from_str(self.sec_key.to_string());
-
-        let opt = Options::default();
-        //(args.bnum, args.deposit,args.commitBalkline, args.commitDeadline),
-        let result = contract
-            .estimate_gas("newCampaign", args, root_addr, opt)
-            .await?;
-        Ok(result)
-    }
-
     pub async fn campaign_num(&self, eth: Eth<Http>) -> web3::contract::Result<U256> {
         let (_root_sk, root_addr) = extract_keypair_from_str(self.sec_key.to_string());
         let contr_addr: H160 = self.contract_addr.parse().unwrap();

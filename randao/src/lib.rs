@@ -388,32 +388,6 @@ impl BlockClient {
         })
     }
 
-    pub fn gas_new_campaign(
-        &self,
-        gas: u32,
-        gas_price: u128,
-        campaign_data: NewCampaignData,
-    ) -> Option<U256> {
-        self.rt.block_on(async {
-            let eth = (*self.eth.clone()).clone();
-            let result = self
-                .randao_contract
-                .gas_new_campaign(eth, gas, gas_price, campaign_data)
-                .await;
-            let value = match result {
-                Ok(v) => {
-                    println!("gas_new_campaign hash: {:?}", v);
-                    Some(v)
-                }
-                Err(e) => {
-                    println!("call gas_new_campaign failed: {:?}", e);
-                    None
-                }
-            };
-            value
-        })
-    }
-
     pub fn contract_get_campaign_info(&self, campaign_id: u128) -> Option<CampaignInfo> {
         self.rt
             .block_on(async {
