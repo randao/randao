@@ -10,7 +10,7 @@ use web3::{
     contract::{tokens::Tokenizable, Contract, Options},
     ethabi::Token,
     transports::Http,
-    types::{BlockNumber, TransactionReceipt, H160, U256},
+    types::{BlockNumber, H160, U256},
 };
 
 lazy_static! {
@@ -113,27 +113,32 @@ impl RandaoContract {
         gas: u32,
         gas_price: u128,
         args: NewCampaignData,
-    ) -> web3::contract::Result<TransactionReceipt> {
+    ) -> web3::contract::Result<H256> {
         let contr_addr: H160 = self.contract_addr.parse().unwrap();
         let contract = Contract::from_json(eth.clone(), contr_addr, self.abi_content.as_bytes())?;
         let secretkey = SecretKey2::from_str(&self.sec_key).unwrap();
+        let (_root_sk, root_addr) = extract_keypair_from_str(self.sec_key.to_string());
 
-        let opt = Options {
+        let mut opt = Options {
             gas: Some(gas.into()),
             gas_price: Some(gas_price.into()),
             value: Some(args.deposit),
             ..Default::default()
         };
 
-        let result = {
+        let hash = {
             let _guard = PRIKEY_CONTRACT_LOCK.lock().await;
+            opt.nonce = Some(
+                eth.transaction_count(root_addr, Some(BlockNumber::Pending))
+                    .await?,
+            );
             contract
-                .signed_call_with_confirmations("newCampaign", args, opt, 1, &secretkey)
+                .signed_call("newCampaign", args, opt, &secretkey)
                 .await?
         };
 
         println!("new_campaign ok");
-        Ok(result)
+        Ok(hash)
     }
 
     pub async fn follow(

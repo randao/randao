@@ -91,6 +91,8 @@ pub struct Opts {
     /// Config file
     #[clap(short = 'c', long = "config", default_value = "config.json")]
     pub config: String,
+    #[clap(short = 'a', long = "is_campagin")]
+    pub is_campagin: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]

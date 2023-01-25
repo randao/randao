@@ -18,17 +18,15 @@ use prometheus::{
     labels, opts, register_gauge, register_histogram_vec, Encoder, Gauge, HistogramVec, TextEncoder,
 };
 use randao::config::Opts;
+use randao::RANDAO_PATH;
 use randao::{
     config::*, contract::*, error::Error, utils::*, BlockClient, WorkThd, ONGOING_CAMPAIGNS,
-};
-use randao::{
-    CONF_PATH, //, KEY_PATH
-    RANDAO_PATH,
 };
 
 use std::{
     fs::create_dir,
-    path::{Path, PathBuf},
+    ops::{Add, AddAssign, SubAssign},
+    path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering as Order},
         Arc, Mutex,
@@ -36,13 +34,14 @@ use std::{
     thread::{self, sleep},
     time::Duration,
 };
-use web3::types::{TransactionReceipt, U256};
+use web3::types::{H256, U256};
 
 // const CHECK_CNT: u8 = 5;
 
 lazy_static! {
     static ref STOP: AtomicBool = AtomicBool::new(false);
     static ref MUTEX: Mutex<()> = Mutex::new(());
+    static ref THREAD_CNT: std::sync::Mutex<u16> = std::sync::Mutex::new(0);
 }
 
 #[derive(Clone)]
@@ -61,14 +60,12 @@ async fn exit() -> impl Responder {
 }
 
 impl MainThread {
-    pub fn set_up() -> Self {
-        let conf_path = PathBuf::from(CONF_PATH.lock().unwrap().clone());
-        let config: Config = Config::parse_from_file(&conf_path);
-        let client = Arc::new(Mutex::new(BlockClient::setup(&config, None)));
+    pub fn set_up(randao_cfg: &Config) -> Self {
+        let client = Arc::new(Mutex::new(BlockClient::setup(randao_cfg, None)));
         MainThread { client }
     }
 
-    pub async fn run_http_server(&self) -> std::io::Result<()> {
+    pub async fn run_http_svr(&self) -> std::io::Result<()> {
         HttpServer::new(move || {
             App::new()
                 .wrap(middleware::Compress::default())
@@ -141,33 +138,37 @@ fn main() -> anyhow::Result<()> {
     // env_logger::init();
 
     let opts: Opts = Opts::parse();
-    *CONF_PATH.lock().unwrap() = opts.config;
 
-    let randao_path = Path::new(RANDAO_PATH);
-    if !randao_path.exists() {
-        create_dir(randao_path)?;
-    } else if !randao_path.is_dir() {
-        anyhow::bail!("randao folder is not dir!!!");
+    println!("opts: {:?}", opts);
+
+    let randao_cfg = PathBuf::from(opts.config);
+    if !randao_cfg.exists() {
+        create_dir(&randao_cfg)?;
+    } else if !randao_cfg.is_file() {
+        anyhow::bail!("randao config is not file!!!");
     }
 
-    // let conf_path = PathBuf::from(CONF_PATH.lock().unwrap().clone());
-    // if !conf_path.exists() || !conf_path.is_file() {
-    //     anyhow::bail!("config folder is incorrect!!!");
-    // }
+    let randao_cfg: Config = Config::parse_from_file(&randao_cfg);
+
+    let randao_path = PathBuf::from(RANDAO_PATH.to_string());
+    if !randao_path.exists() || !randao_path.is_dir() {
+        anyhow::bail!("randao folder is incorrect!!!");
+    }
 
     // let key_path = Path::new(KEY_PATH);
     // if !key_path.exists() || !key_path.is_dir() {
     //     anyhow::bail!("key folder is incorrect!!!");
     // }
 
+    let randao_cfg2 = randao_cfg.clone();
     thread::spawn(move || {
-        let main_thread = MainThread::set_up();
+        let main_thread = MainThread::set_up(&randao_cfg2);
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
             .unwrap();
         rt.block_on(async {
-            let _ = main_thread.run_http_server().await;
+            let _ = main_thread.run_http_svr().await;
         })
     });
 
@@ -181,42 +182,42 @@ fn main() -> anyhow::Result<()> {
         })
     });
 
-    run_main().or_else(|e| anyhow::bail!("main thread err:{:?}", e))?;
+    run_main(&randao_cfg, opts.is_campagin)
+        .or_else(|e| anyhow::bail!("main thread err:{:?}", e))?;
 
     Ok(())
 }
 
-fn run_main() -> Result<U256, Error> {
-    let conf_path = PathBuf::from(CONF_PATH.lock().unwrap().clone());
-    let config: Config = Config::parse_from_file(&conf_path);
-    let mut client = BlockClient::setup(&config, None);
+fn run_main(randao_cfg: &Config, is_campagin: bool) -> Result<U256, Error> {
+    let mut client = BlockClient::setup(&randao_cfg, None);
 
     let abi_content = include_str!("../Randao_sol_Randao.abi");
     client.contract_setup(
-        &config.chain.participant.clone(),
-        &config.chain.opts.randao.clone(),
+        &randao_cfg.chain.participant.clone(),
+        &randao_cfg.chain.opts.randao.clone(),
         abi_content,
         10000000,
         10000000000,
     );
 
-    let client_arc = Arc::new(client);
-    let chain_id = client_arc.chain_id().unwrap();
-    let block = client_arc.current_block().unwrap();
+    let cli_arc = Arc::new(client);
+    let chain_id = cli_arc.chain_id().unwrap();
+    let block = cli_arc.current_block().unwrap();
 
-    //test
-    contract_new_campaign(&client_arc);
+    if is_campagin {
+        contract_new_campaign(&cli_arc);
+    }
 
-    if chain_id.to_string() != client_arc.config.chain.chain_id {
+    if chain_id.to_string() != cli_arc.config.chain.chain_id {
         return Err(Error::CheckChainErr);
     }
     info!(
         "chain_name:{:?}, chain_id:{:?}, block_num, endpoind:{:?}, campaigns_num:{:?}, randao:{:?}",
-        client_arc.config.chain.name,
+        cli_arc.config.chain.name,
         chain_id,
-        client_arc.config.chain.endpoint,
+        cli_arc.config.chain.endpoint,
         block.number,
-        client_arc.config.chain.opts.randao
+        cli_arc.config.chain.opts.randao
     );
 
     let mut handle_vec: Vec<std::thread::JoinHandle<Result<(), Error>>> = Vec::new();
@@ -227,7 +228,7 @@ fn run_main() -> Result<U256, Error> {
         let _guard = MUTEX
             .lock()
             .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?;
-        read_campaign_ids().or_else(|e| {
+        read_campaign_ids(RANDAO_PATH).or_else(|e| {
             error!("Error loading campaign_id file: {:?}", e);
             Ok(Vec::new())
         })?
@@ -247,9 +248,13 @@ fn run_main() -> Result<U256, Error> {
     };
 
     while !STOP.load(Order::SeqCst) {
-        //test
-        contract_new_campaign(&client_arc);
-        let local_client = client_arc.clone();
+        if is_campagin {
+            contract_new_campaign(&cli_arc);
+            sleep(Duration::from_millis(1000));
+            continue;
+        }
+
+        let local_client = cli_arc.clone();
 
         let new_campaign_num = match local_client.contract_campaign_num() {
             None => {
@@ -258,104 +263,126 @@ fn run_main() -> Result<U256, Error> {
             Some(num) => num,
         };
 
-        if new_campaign_num > campaign_num || !campaign_ids.is_empty() {
+        if new_campaign_num <= campaign_num && campaign_ids.is_empty() {
+            sleep(Duration::from_millis(5000));
+            continue;
+        }
+
+        // if new_campaign_num > campaign_num || !campaign_ids.is_empty() {
+        if campaign_ids.is_empty() {
+            campaign_num = new_campaign_num;
+        }
+
+        let mut campaign_id = new_campaign_num.as_u128() - 1;
+        let info = local_client
+            .contract_get_campaign_info(campaign_id)
+            .unwrap();
+        if local_client.config.chain.opts.max_campaigns
+            <= i32::try_from(handle_vec.len())
+                .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?
+        {
+            handle_vec
+                .pop()
+                .unwrap()
+                .join()
+                .map_err(|e| Error::Unknown(format!("{:?}", e)))??;
+            THREAD_CNT.lock().unwrap().sub_assign(1);
+
+            println!("thread count greater than max campaign");
+            continue; //return Err(Error::GetNumCampaignsErr);
+        }
+        if !check_campaign_info(&local_client, &info, &local_client.config) {
+            println!("campaign info is incorrect");
+            continue; //return Err(Error::CheckCampaignsInfoErr);
+        }
+
+        let is_new_campaign_id = {
+            let _guard = MUTEX.lock().unwrap();
             if campaign_ids.is_empty() {
-                campaign_num = new_campaign_num;
+                store_campaign_id(RANDAO_PATH, campaign_id).unwrap();
+                true
+            } else {
+                campaign_id = campaign_ids.pop().unwrap();
+                false
             }
+        };
 
-            let mut campaign_id = new_campaign_num.as_u128() - 1;
-            let info = local_client
-                .contract_get_campaign_info(campaign_id)
-                .unwrap();
-            if local_client.config.chain.opts.max_campaigns
-                <= i32::try_from(handle_vec.len())
-                    .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?
+        let t = thread::spawn(move || {
+            let mut work_thd;
+            if is_new_campaign_id {
+                work_thd = WorkThd::new(
+                    campaign_id,
+                    info,
+                    &local_client,
+                    local_client.config.clone(),
+                    RANDAO_PATH.to_owned(),
+                );
+            } else {
+                work_thd = WorkThd::new_from_campaign_id(
+                    campaign_id,
+                    &local_client,
+                    local_client.config.clone(),
+                    RANDAO_PATH.to_owned(),
+                );
+            }
+            println!("work thread begin!!!");
+            match work_thd
+                .do_task()
+                .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))
             {
-                handle_vec
-                    .pop()
-                    .unwrap()
-                    .join()
-                    .map_err(|e| Error::Unknown(format!("{:?}", e)))??;
-
-                println!("thread count greater than max campaign");
-                continue; //return Err(Error::GetNumCampaignsErr);
-            }
-            if !check_campaign_info(&local_client, &info, &local_client.config) {
-                println!("campaign info is incorrect");
-                continue; //return Err(Error::CheckCampaignsInfoErr);
-            }
-
-            let is_new_campaign_id = {
-                let _guard = MUTEX.lock().unwrap();
-                if campaign_ids.is_empty() {
-                    store_campaign_id(campaign_id).unwrap();
-                    true
-                } else {
-                    campaign_id = campaign_ids.pop().unwrap();
-                    false
+                Ok((campaign_id, randao_num, _my_bounty)) => {
+                    println!("work thread end success!!!");
+                    info!("campaign_id:{:?},  randao:{:?}", campaign_id, randao_num);
+                    THREAD_CNT.lock().unwrap().add_assign(1);
+                }
+                Err(e) => {
+                    println!("work thread err: {:?}", e);
+                    THREAD_CNT.lock().unwrap().add_assign(1);
                 }
             };
 
-            let t = thread::spawn(move || {
-                let mut work_thd;
-                if is_new_campaign_id {
-                    work_thd = WorkThd::new(
-                        campaign_id,
-                        info,
-                        &local_client,
-                        local_client.config.clone(),
-                    );
-                } else {
-                    work_thd = WorkThd::new_from_campaign_id(
-                        campaign_id,
-                        &local_client,
-                        local_client.config.clone(),
-                    );
-                }
-                println!("work thread begin!!!");
-                match work_thd
-                    .do_task()
-                    .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))
-                {
-                    Ok((campaign_id, randao_num, _my_bounty)) => {
-                        println!("work thread end success!!!");
-                        info!("campaign_id:{:?},  randao:{:?}", campaign_id, randao_num);
-                    }
-                    Err(e) => {
-                        println!("work thread err: {:?}", e);
-                    }
-                };
-
-                {
-                    let _guard = MUTEX.lock().unwrap();
-                    remove_campaign_id(campaign_id)
-                        .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?
-                }
-                Ok(())
-            });
-            handle_vec.push(t);
-
-            // check_cnt += 1;
-            // if check_cnt == CHECK_CNT {
-            //     while handle_vec.len() > max_thds_cnt {
-            //         handle_vec
-            //             .pop()
-            //             .unwrap()
-            //             .join()
-            //             .map_err(|e| Error::Unknown(format!("{:?}", e)))??;
-            //     }
-            //     check_cnt = 0;
-            // }
+            {
+                let _guard = MUTEX.lock().unwrap();
+                remove_campaign_id(RANDAO_PATH, campaign_id)
+                    .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?
+            }
+            Ok(())
+        });
+        handle_vec.push(t);
+        while *THREAD_CNT.lock().unwrap() != 0 {
+            handle_vec
+                .pop()
+                .unwrap()
+                .join()
+                .map_err(|e| Error::Unknown(format!("{:?}", e)))??;
+            THREAD_CNT.lock().unwrap().sub_assign(1);
         }
-        sleep(Duration::from_millis(5000));
+        println!(
+            "-------------------thread count: {:?}-------------------",
+            handle_vec.len()
+        );
+
+        // check_cnt += 1;
+        // if check_cnt == CHECK_CNT {
+        //     while handle_vec.len() > max_thds_cnt {
+        //         handle_vec
+        //             .pop()
+        //             .unwrap()
+        //             .join()
+        //             .map_err(|e| Error::Unknown(format!("{:?}", e)))??;
+        //     }
+        //     check_cnt = 0;
+        // }
     }
+    //     sleep(Duration::from_millis(5000));
+    // }
     for t in handle_vec {
         t.join().map_err(|e| Error::Unknown(format!("{:?}", e)))??;
     }
     return Ok(U256::from(1));
 }
 
-fn contract_new_campaign(client: &BlockClient) -> Option<TransactionReceipt> {
+fn contract_new_campaign(client: &BlockClient) -> Option<H256> {
     let block_num = client.block_number().unwrap();
     let bnum = block_num.as_u64() + 20;
     let commit_balkline: u128 = 16;
@@ -379,8 +406,9 @@ fn test_create_new_campaign() {
     use serde_json::{from_str, Value};
     use std::env;
     use std::fs;
+    use std::path::Path;
 
-    let conf_path = PathBuf::from(CONF_PATH.lock().unwrap().clone());
+    let conf_path = PathBuf::from("config.json");
     let config: Config = Config::parse_from_file(&conf_path);
     let mut client = BlockClient::setup(&config, None);
     client.contract_setup(
@@ -431,6 +459,7 @@ fn test_contract_new_campaign() {
     use serde_json::{from_str, Value};
     use std::env;
     use std::fs;
+    use std::path::Path;
     use std::path::PathBuf;
 
     let current_dir = env::current_dir().unwrap();
@@ -446,7 +475,7 @@ fn test_contract_new_campaign() {
     let consumer = keys["consumer"]["secret"].as_str().unwrap();
     let _committer = keys["committer"]["secret"].as_str().unwrap();
 
-    let conf_path = PathBuf::from(CONF_PATH.lock().unwrap().clone());
+    let conf_path = PathBuf::from("config.json");
     let config: Config = Config::parse_from_file(&conf_path);
     let mut client = BlockClient::setup(&config, None);
     client.contract_setup(
@@ -499,7 +528,7 @@ fn test_contract_new_campaign() {
         .unwrap();
     println!("my_bounty :{:?}", my_bounty);
 
-    let mut work_thd = WorkThd::new(campaign_id, info, &client, config);
+    let mut work_thd = WorkThd::new(campaign_id, info, &client, config, RANDAO_PATH.to_owned());
     let (campaign_id, randao_num, my_bounty) = work_thd.do_task().unwrap();
 
     println!(

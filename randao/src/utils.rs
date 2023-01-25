@@ -1,5 +1,4 @@
 use crate::config::Config;
-use crate::RANDAO_PATH;
 use crate::{BlockClient, CampaignInfo, U256};
 
 use sha3::{Digest, Keccak256};
@@ -109,9 +108,9 @@ pub fn check_campaign_info(
     false
 }
 
-pub fn store_campaign_id(campaign_id: u128) -> Result<(), std::io::Error> {
-    fs::create_dir_all(RANDAO_PATH)?;
-    let path = RANDAO_PATH.to_string() + "campaign_ids.txt";
+pub fn store_campaign_id(randao_path: &str, campaign_id: u128) -> Result<(), std::io::Error> {
+    fs::create_dir_all(randao_path)?;
+    let path = randao_path.to_string() + "campaign_ids.txt";
     let path = Path::new(&(path));
     if !path.exists() {
         File::create(path)?;
@@ -122,9 +121,9 @@ pub fn store_campaign_id(campaign_id: u128) -> Result<(), std::io::Error> {
     Ok(())
 }
 
-pub fn remove_campaign_id(campaign_id: u128) -> Result<(), std::io::Error> {
-    let mut campaign_ids = read_campaign_ids().unwrap();
-    let path = RANDAO_PATH.to_string() + "campaign_ids.txt";
+pub fn remove_campaign_id(randao_path: &str, campaign_id: u128) -> Result<(), std::io::Error> {
+    let mut campaign_ids = read_campaign_ids(randao_path).unwrap();
+    let path = randao_path.to_string() + "campaign_ids.txt";
     campaign_ids.retain(|u| *u != campaign_id);
     let mut file = OpenOptions::new().write(true).truncate(true).open(&path)?;
     for campaign_id in campaign_ids {
@@ -133,8 +132,8 @@ pub fn remove_campaign_id(campaign_id: u128) -> Result<(), std::io::Error> {
     Ok(())
 }
 
-pub fn read_campaign_ids() -> Result<Vec<u128>, std::io::Error> {
-    let path = RANDAO_PATH.to_string() + "campaign_ids.txt";
+pub fn read_campaign_ids(randao_path: &str) -> Result<Vec<u128>, std::io::Error> {
+    let path = randao_path.to_string() + "campaign_ids.txt";
     let mut file = File::open(&path)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
@@ -154,12 +153,12 @@ pub fn read_campaign_ids() -> Result<Vec<u128>, std::io::Error> {
     Ok(campaign_ids)
 }
 
-pub fn delete_all_campaign_ids() -> Result<(), std::io::Error> {
-    let path = RANDAO_PATH.to_string() + "campaign_ids.txt";
+pub fn delete_all_campaign_ids(randao_path: &str) -> Result<(), std::io::Error> {
+    let path = randao_path.to_string() + "campaign_ids.txt";
     let mut file = OpenOptions::new().write(true).truncate(true).open(&path)?;
     file.write_all(b"")?;
     fs::remove_file(path)?;
-    fs::remove_dir_all(RANDAO_PATH)?;
+    fs::remove_dir_all(randao_path)?;
     Ok(())
 }
 #[test]
@@ -168,22 +167,22 @@ fn test_campaign_id_store_and_remove() {
     let campaign_id2 = 2u128;
     let campaign_id3 = 3u128;
 
-    store_campaign_id(campaign_id1).unwrap();
-    store_campaign_id(campaign_id2).unwrap();
-    store_campaign_id(campaign_id3).unwrap();
+    store_campaign_id("config.json", campaign_id1).unwrap();
+    store_campaign_id("config.json", campaign_id2).unwrap();
+    store_campaign_id("config.json", campaign_id3).unwrap();
 
-    let campaign_ids = read_campaign_ids().unwrap();
+    let campaign_ids = read_campaign_ids("config.json").unwrap();
     assert_eq!(campaign_ids.len(), 3);
     assert!(campaign_ids.contains(&campaign_id1));
     assert!(campaign_ids.contains(&campaign_id2));
     assert!(campaign_ids.contains(&campaign_id3));
 
-    remove_campaign_id(campaign_id2).unwrap();
+    remove_campaign_id("config.json", campaign_id2).unwrap();
 
-    let campaign_ids = read_campaign_ids().unwrap();
+    let campaign_ids = read_campaign_ids("config.json").unwrap();
     assert_eq!(campaign_ids.len(), 2);
     assert!(campaign_ids.contains(&campaign_id1));
     assert!(!campaign_ids.contains(&campaign_id2));
     assert!(campaign_ids.contains(&campaign_id3));
-    let _ = delete_all_campaign_ids();
+    let _ = delete_all_campaign_ids("config.json");
 }

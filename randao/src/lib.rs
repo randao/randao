@@ -50,10 +50,10 @@ pub const BLOCK_TIME: u64 = 16;
 pub const RANDAO_PATH: &str = "/tmp/.randao/campaigns/";
 // pub const CONF_PATH: &str = "/tmp/.randao/config/config.json";
 pub const KEY_PATH: &str = "/tmp/.randao/keys/";
-lazy_static! {
-    pub static ref CONF_PATH: std::sync::Mutex<String> =
-        std::sync::Mutex::new("config.json".to_string());
-}
+// lazy_static! {
+//     pub static ref CONF_PATH: std::sync::Mutex<String> =
+//         std::sync::Mutex::new("config.json".to_string());
+// }
 
 lazy_static! {
     pub(crate) static ref CUR_TASKS: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
@@ -151,17 +151,17 @@ pub struct NetworkInfo {
 }
 
 impl BlockClient {
-    pub fn setup(config: &Config, timeout: Option<u64>) -> Self {
+    pub fn setup(randao_cfg: &Config, timeout: Option<u64>) -> Self {
         let client = Client::builder()
             .timeout(Duration::from_secs(timeout.unwrap_or(3)))
             .build()
             .unwrap();
-        let url = Url::parse(config.chain.endpoint.as_str()).unwrap();
+        let url = Url::parse(randao_cfg.chain.endpoint.as_str()).unwrap();
         let transport = Http::with_client(client, url);
         let web3 = Arc::new(web3::Web3::new(transport));
         let eth = Arc::new(web3.eth());
         let accounts = Arc::new(web3.accounts());
-        let (_root_sk, root_addr) = extract_keypair_from_config(&config);
+        let (_root_sk, root_addr) = extract_keypair_from_config(&randao_cfg);
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
@@ -175,7 +175,7 @@ impl BlockClient {
             root_addr,
             rt: rt_arc,
             randao_contract: RandaoContract::default(),
-            config: config.clone(),
+            config: randao_cfg.clone(),
         }
     }
 
@@ -348,7 +348,7 @@ impl BlockClient {
         gas: u32,
         gas_price: u128,
         campaign_data: NewCampaignData,
-    ) -> Option<TransactionReceipt> {
+    ) -> Option<H256> {
         self.rt.block_on(async {
             let eth = (*self.eth.clone()).clone();
             let result = self
@@ -591,6 +591,7 @@ pub struct WorkThd {
     campaign_info: Option<CampaignInfo>,
     cli: BlockClient,
     _cfg: Config,
+    randao_path: String,
 }
 
 impl WorkThd {
@@ -599,6 +600,7 @@ impl WorkThd {
         campaign_info: CampaignInfo,
         cli: &BlockClient,
         _cfg: Config,
+        randao_path: String,
     ) -> WorkThd {
         // 1)
         WorkThd {
@@ -606,16 +608,23 @@ impl WorkThd {
             campaign_info: Some(campaign_info),
             cli: cli.clone(),
             _cfg,
+            randao_path,
         }
     }
 
-    pub fn new_from_campaign_id(campaign_id: u128, cli: &BlockClient, _cfg: Config) -> WorkThd {
+    pub fn new_from_campaign_id(
+        campaign_id: u128,
+        cli: &BlockClient,
+        _cfg: Config,
+        randao_path: String,
+    ) -> WorkThd {
         // 1)
         WorkThd {
             campaign_id,
             campaign_info: None,
             cli: cli.clone(),
             _cfg,
+            randao_path,
         }
     }
 
@@ -630,7 +639,7 @@ impl WorkThd {
             tx_hash: H256::zero(),
         };
 
-        let status_path_str = RANDAO_PATH.to_string() + &self.campaign_id.to_string() + ".json";
+        let status_path_str = self.randao_path.clone() + &self.campaign_id.to_string() + ".json";
         let status_path = Path::new(&status_path_str);
 
         let mut status_file;
