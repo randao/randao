@@ -22,8 +22,9 @@ use randao::RANDAO_PATH;
 use randao::{
     config::*, contract::*, error::Error, utils::*, BlockClient, WorkThd, ONGOING_CAMPAIGNS,
 };
-
 use std::{
+    net::SocketAddr,
+    str::FromStr,
     fs::create_dir,
     ops::{Add, AddAssign, SubAssign},
     path::PathBuf,
@@ -80,6 +81,25 @@ impl MainThread {
         .run()
         .await
     }
+
+    pub async fn prometheus_http_svr_start(&self) {
+        // let addr = ([0, 0, 0, 0], 9090).into();
+        info!(
+            "Prometheus Listening on http://{}",
+            self.client.lock().unwrap().config.prometheus_listen.clone()
+        );
+        let addr = SocketAddr::from_str(&self.client.lock().unwrap().config.prometheus_listen.clone()).unwrap();
+        let serve_future = Server::bind(
+            &addr,
+        )
+        .serve(make_service_fn(|_| async {
+            Ok::<_, hyper::Error>(service_fn(prometheus_http_svr_req))
+        }));
+
+        if let Err(err) = serve_future.await {
+            panic!("Server Error: {}", err);
+        }
+    }
 }
 
 lazy_static! {
@@ -120,26 +140,15 @@ async fn prometheus_http_svr_req(_req: Request<Body>) -> Result<Response<Body>, 
     Ok(response)
 }
 
-async fn prometheus_http_svr_start() {
-    let addr = ([0, 0, 0, 0], 9090).into();
-    info!("Prometheus Listening on http://{}", addr);
-
-    let serve_future = Server::bind(&addr).serve(make_service_fn(|_| async {
-        Ok::<_, hyper::Error>(service_fn(prometheus_http_svr_req))
-    }));
-
-    if let Err(err) = serve_future.await {
-        panic!("Server Error: {}", err);
-    }
-}
-
 fn main() -> anyhow::Result<()> {
     // env::set_var("RUST_LOG", "info,all=info");
     // env_logger::init();
 
-    let opts: Opts = Opts::parse();
-
+    let mut opts: Opts = Opts::parse();
     println!("opts: {:?}", opts);
+
+    opts.datadir.push_str(&RANDAO_PATH.lock().unwrap());
+    *RANDAO_PATH.lock().unwrap() = opts.datadir;
 
     let randao_cfg = PathBuf::from(opts.config);
     if !randao_cfg.exists() {
@@ -150,7 +159,7 @@ fn main() -> anyhow::Result<()> {
 
     let randao_cfg: Config = Config::parse_from_file(&randao_cfg);
 
-    let randao_path = PathBuf::from(RANDAO_PATH.to_string());
+    let randao_path = PathBuf::from(RANDAO_PATH.lock().unwrap().to_owned());
     if !randao_path.exists() || !randao_path.is_dir() {
         anyhow::bail!("randao folder is incorrect!!!");
     }
@@ -161,26 +170,30 @@ fn main() -> anyhow::Result<()> {
     // }
 
     let randao_cfg2 = randao_cfg.clone();
-    thread::spawn(move || {
-        let main_thread = MainThread::set_up(&randao_cfg2);
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-        rt.block_on(async {
-            let _ = main_thread.run_http_svr().await;
-        })
-    });
+    let randao_cfg3 = randao_cfg.clone();
+    if !opts.is_campagin {
+        thread::spawn(move || {
+            let main_thread = MainThread::set_up(&randao_cfg2);
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            rt.block_on(async {
+                let _ = main_thread.run_http_svr().await;
+            })
+        });
 
-    thread::spawn(move || {
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-        rt.block_on(async {
-            prometheus_http_svr_start().await;
-        })
-    });
+        thread::spawn(move || {
+            let main_thread = MainThread::set_up(&randao_cfg3);
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            rt.block_on(async {
+                let _ = main_thread.prometheus_http_svr_start().await;
+            })
+        });
+    }
 
     run_main(&randao_cfg, opts.is_campagin)
         .or_else(|e| anyhow::bail!("main thread err:{:?}", e))?;
@@ -228,7 +241,7 @@ fn run_main(randao_cfg: &Config, is_campagin: bool) -> Result<U256, Error> {
         let _guard = MUTEX
             .lock()
             .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?;
-        read_campaign_ids(RANDAO_PATH).or_else(|e| {
+        read_campaign_ids(&RANDAO_PATH.lock().unwrap()).or_else(|e| {
             error!("Error loading campaign_id file: {:?}", e);
             Ok(Vec::new())
         })?
@@ -299,7 +312,7 @@ fn run_main(randao_cfg: &Config, is_campagin: bool) -> Result<U256, Error> {
         let is_new_campaign_id = {
             let _guard = MUTEX.lock().unwrap();
             if campaign_ids.is_empty() {
-                store_campaign_id(RANDAO_PATH, campaign_id).unwrap();
+                store_campaign_id(&RANDAO_PATH.lock().unwrap(), campaign_id).unwrap();
                 true
             } else {
                 campaign_id = campaign_ids.pop().unwrap();
@@ -315,14 +328,14 @@ fn run_main(randao_cfg: &Config, is_campagin: bool) -> Result<U256, Error> {
                     info,
                     &local_client,
                     local_client.config.clone(),
-                    RANDAO_PATH.to_owned(),
+                    RANDAO_PATH.lock().unwrap().to_owned(),
                 );
             } else {
                 work_thd = WorkThd::new_from_campaign_id(
                     campaign_id,
                     &local_client,
                     local_client.config.clone(),
-                    RANDAO_PATH.to_owned(),
+                    RANDAO_PATH.lock().unwrap().to_owned(),
                 );
             }
             println!("work thread begin!!!");
@@ -343,7 +356,7 @@ fn run_main(randao_cfg: &Config, is_campagin: bool) -> Result<U256, Error> {
 
             {
                 let _guard = MUTEX.lock().unwrap();
-                remove_campaign_id(RANDAO_PATH, campaign_id)
+                remove_campaign_id(&RANDAO_PATH.lock().unwrap(), campaign_id)
                     .or_else(|e| Err(Error::Unknown(format!("{:?}", e))))?
             }
             Ok(())
@@ -528,7 +541,7 @@ fn test_contract_new_campaign() {
         .unwrap();
     println!("my_bounty :{:?}", my_bounty);
 
-    let mut work_thd = WorkThd::new(campaign_id, info, &client, config, RANDAO_PATH.to_owned());
+    let mut work_thd = WorkThd::new(campaign_id, info, &client, config, RANDAO_PATH.lock().unwrap().to_owned());
     let (campaign_id, randao_num, my_bounty) = work_thd.do_task().unwrap();
 
     println!(

@@ -91,14 +91,19 @@ pub struct Opts {
     /// Config file
     #[clap(short = 'c', long = "config", default_value = "config.json")]
     pub config: String,
+    #[clap(short = 'd', long = "datadir", default_value = "/tmp/.randao/")]
+    pub datadir: String,
     #[clap(short = 'a', long = "is_campagin")]
     pub is_campagin: bool,
+
+    
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Config {
     pub chain: Chain,
     pub http_listen: String,
+    pub prometheus_listen: String,
     pub root_secret: String,
     pub secret_key: ConfigKey,
 }

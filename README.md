@@ -2,6 +2,15 @@
 Randao implementation for Findora BlockChain.
 
 ## Findora Rosetta Docker build and run
+### Findora Rosetta contract build and deploy
+```bash
+cd eth
+REPORT_GAS=true
+npm install --save-dev hardhat
+npm install
+npx hardhat compile
+npx hardhat run scripts/deploy.ts --network localhost
+```
 ### Findora Rosetta image build and run single container
 ```bash
 docker build . -t findora-randao

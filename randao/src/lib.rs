@@ -47,13 +47,14 @@ use web3::{
 const _FRC20_ADDRESS: u64 = 0x1000;
 pub const BLOCK_TIME: u64 = 16;
 
-pub const RANDAO_PATH: &str = "/tmp/.randao/campaigns/";
-// pub const CONF_PATH: &str = "/tmp/.randao/config/config.json";
-pub const KEY_PATH: &str = "/tmp/.randao/keys/";
-// lazy_static! {
+lazy_static! {
+    pub static ref RANDAO_PATH: std::sync::Mutex<String> = std::sync::Mutex::new("campaigns/".to_string());
+    // pub const CONF_PATH: &str = "/tmp/.randao/config/config.json";
+    pub static ref KEY_PATH: std::sync::Mutex<String> = std::sync::Mutex::new("keys/".to_string());
 //     pub static ref CONF_PATH: std::sync::Mutex<String> =
 //         std::sync::Mutex::new("config.json".to_string());
-// }
+
+}
 
 lazy_static! {
     pub(crate) static ref CUR_TASKS: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));

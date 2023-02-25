@@ -86,10 +86,17 @@ pub fn check_campaign_info(
     let (_root_sk, root_addr) = extract_keypair_from_str(client.config.chain.participant.clone());
     let balance = client.balance(root_addr, Some(Number(block_number)));
     if U256::from_str(config.chain.opts.min_gas_reserve.as_str()).unwrap() >= balance {
+        println!("check_campaign_info err 1");
         return false;
     }
 
     println!("{:?}, block_number :{:?}", campaign_info, block_number);
+
+    if campaign_info.deposit.as_u128() == 0 
+    {
+        println!("check_campaign_info err 2");
+        return false;
+    }
 
     let num = campaign_info.bountypot.as_u128()
         / (campaign_info.deposit.as_u128() / (campaign_info.commit_num.as_u128() + 1));
@@ -103,6 +110,7 @@ pub fn check_campaign_info(
         && campaign_info.commit_deadline > U256::from(config.chain.opts.min_reveal_window)
         && config.chain.opts.min_reveal_window > config.chain.opts.max_reveal_delay
     {
+        println!("check_campaign_info err 3");
         return true;
     }
     false
