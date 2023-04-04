@@ -14,3 +14,7 @@ out.log.geth
 
 node_modules/
 .idea/
+.secret
+package-lock.json
+target/
+Cargo.lock

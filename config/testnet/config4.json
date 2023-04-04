@@ -1,0 +1,29 @@
+{
+    "chain": {
+        "name": "Anvil",
+        "chainId": "2153",
+        "endpoint":"https://prod-testnet.prod.findora.org:8545",
+        "participant": "8890ed67d3cc7284846be36964eb9d1be242f57b642bc5f6fb15c100984209f0",
+        "opts": {
+            "randao": "0x1663a1ac216A5A53BE7842C27E7bCDbc07d9a861",
+            "gasLimit": "1000000",
+            "maxGasPrice": "100000000000",
+            "minGasReserve": "100000000",
+            "maxDeposit": 10,
+            "minRateOfReturn": 0.5,
+            "minRevealWindow": 7,
+            "maxRevealDelay": 6,
+            "maxCampaigns": 500,
+            "startBlock": 0
+        }
+    },
+    "http_listen": "0.0.0.0:3004",
+    "prometheus_listen": "0.0.0.0:9094",
+    "root_secret": "8890ed67d3cc7284846be36964eb9d1be242f57b642bc5f6fb15c100984209f0",
+    "secret_key": {
+        "founder_secret": "8890ed67d3cc7284846be36964eb9d1be242f57b642bc5f6fb15c100984209f0",
+        "follower_secret": "9c6469da0ea992c1f3d4b635d61cb9d855279490cff6fc1024c58d293371097a",
+        "consumer_secret": "9b1b56f8be67d1f00b18c1822600df35cdb75d3137460126e5c1c7e85be4f09d",
+        "committer_secret": "b45982e7622c5ac0682565f9162f7096b3f11fac5d0647fdbf4bac2ca7afbf72"
+    }
+}

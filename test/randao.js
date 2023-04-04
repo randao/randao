@@ -6,6 +6,7 @@ contract('Randao', (accounts) => {
   const consumer = accounts[1];
   const follower1 = accounts[2];
   const committer1 = accounts[3];
+  console.log("accounts number : == ", accounts);
 
   let deposit = web3.utils.toWei('10', 'ether');
 
@@ -148,15 +149,18 @@ contract('Randao', (accounts) => {
     context('before the commit phase', () => {
       beforeEach(async () => {
         await h.setupNewCampaign(randao, consumer);
+        deposit = web3.utils.toWei('10', 'ether');
         await randao.follow.call(0, {from: follower1, value: deposit});
+        await h.waitBlocks(5);
         secret = new web3.utils.BN('131242344353464564564574574567456');
       });
 
       it('does not accept commits', async () => {
+
         commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
         await h.assertThrowsAsync(async () => {
           await randao.commit(0, commitment, {from: committer1, value: deposit});
-        }, '');
+        }, 'Too early to commit to compaign');
       });
     });
 
@@ -169,7 +173,7 @@ contract('Randao', (accounts) => {
         deposit = web3.utils.toWei('10', 'ether');
         await randao.newCampaign(bnum, deposit, commitBalkline, commitDeadline, {from: consumer, value: deposit});
         await randao.follow.call(0, {from: follower1, value: deposit});
-        h.mineBlocks(9);
+        await h.waitBlocks(6);
         secret = new web3.utils.BN('131242344353464564564574574567456');
       });
 
@@ -191,15 +195,14 @@ contract('Randao', (accounts) => {
       it('does not accept 0 deposit', async () => {
         await h.assertThrowsAsync(async () => {
           await randao.commit(0, commitment, {from: committer1, value: 0});
-        }, '');
+        }, 'Incorrect deposit supplied');
       });
     });
-
     context('after the commit phase', () => {
       beforeEach(async () => {
         await h.setupNewCampaign(randao, consumer);
         await randao.follow.call(0, {from: follower1, value: deposit});
-        h.mineBlocks(19);
+        await h.waitBlocks(13);
         secret = new web3.utils.BN('131242344353464564564574574567456');
       });
 
@@ -207,7 +210,39 @@ contract('Randao', (accounts) => {
         commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
         await h.assertThrowsAsync(async () => {
           await randao.commit(0, commitment, {from: committer1, value: deposit});
-        }, '');
+        }, 'Too late to commit to compaign');
+      });
+    });
+    context('On the edge ：during the commit phase', () => {
+      beforeEach(async () => {
+        await h.setupNewCampaign(randao, consumer);
+        await randao.follow.call(0, {from: follower1, value: deposit});
+        await h.waitBlocks(5);
+        secret = new web3.utils.BN('131242344353464564564574574567456');
+      });
+
+      it('early to commit to compaign', async () => {
+        await h.assertThrowsAsync(async () => {
+          await randao.commit(0, commitment, {from: committer1, value: deposit});
+        }, 'Too early to commit to compaign');
+      });
+
+      it('accept commits', async () => {
+        await h.waitBlocks(1);
+        const web3Commitment = web3.utils.soliditySha3(secret.toString(10));
+        commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
+        assert.equal(commitment, web3Commitment);
+        await randao.commit(0, commitment, {from: committer1, value: deposit});
+        commit = await randao.getCommitment(0, {from: committer1});
+        assert.equal(commit, commitment);
+
+      });
+
+      it('late to commit to compaign', async () => {
+        await h.waitBlocks(8);
+        await h.assertThrowsAsync(async () => {
+          await randao.commit(0, commitment, {from: committer1, value: deposit});
+        }, 'Too late to commit to compaign');
       });
     });
   });
@@ -217,7 +252,7 @@ contract('Randao', (accounts) => {
       beforeEach(async () => {
         await h.setupNewCampaign(randao, consumer);
         await randao.follow.call(0, {from: follower1, value: deposit});
-        h.mineBlocks(9);
+        await h.waitBlocks(9);
         secret = new web3.utils.BN('131242344353464564564574574567456');
         commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
         await randao.commit(0, commitment, {from: committer1, value: deposit});
@@ -234,11 +269,11 @@ contract('Randao', (accounts) => {
       beforeEach(async () => {
         await h.setupNewCampaign(randao, consumer);
         await randao.follow.call(0, {from: follower1, value: deposit});
-        h.mineBlocks(9);
+        await h.waitBlocks(9);
         secret = new web3.utils.BN('131242344353464564564574574567456');
         commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
         await randao.commit(0, commitment, {from: committer1, value: deposit});
-        h.mineBlocks(5);
+        await h.waitBlocks(5);
       });
 
       it('accepts a reveal', async () => {
@@ -250,17 +285,47 @@ contract('Randao', (accounts) => {
       beforeEach(async () => {
         await h.setupNewCampaign(randao, consumer);
         await randao.follow.call(0, {from: follower1, value: deposit});
-        h.mineBlocks(9);
+        await h.waitBlocks(9);
         secret = new web3.utils.BN('131242344353464564564574574567456');
         commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
         await randao.commit(0, commitment, {from: committer1, value: deposit});
-        h.mineBlocks(15);
+        //h.mineBlocks(15);
+        await h.waitBlocks(15);
       });
 
       it('does not accept reveals', async () => {
         await h.assertThrowsAsync(async () => {
           await randao.reveal(0, secret, {from: committer1});
         }, '');
+      });
+    });
+
+    context('On the edge ： during the reveal phase', () => {
+      beforeEach(async () => {
+        await h.setupNewCampaign(randao, consumer);
+        await randao.follow.call(0, {from: follower1, value: deposit});
+        await h.waitBlocks(11);
+        secret = new web3.utils.BN('131242344353464564564574574567456');
+        commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
+        await randao.commit(0, commitment, {from: committer1, value: deposit});
+      });
+
+      it('does not accept reveals', async () => {
+        await h.assertThrowsAsync(async () => {
+          await randao.reveal(0, secret, {from: committer1});
+        }, 'Too early to reveal secret');
+      });
+
+      it('accepts a reveal', async () => {
+        await h.waitBlocks(2);
+        await randao.reveal(0, secret, {from: committer1});
+      });
+
+      it('does not accept reveals', async () => {
+        await h.waitBlocks(6);
+        await h.assertThrowsAsync(async () => {
+          await randao.reveal(0, secret, {from: committer1});
+        }, 'Too late to reveal secret');
       });
     });
   });
@@ -270,11 +335,11 @@ contract('Randao', (accounts) => {
       beforeEach(async () => {
         await h.setupNewCampaign(randao, consumer);
         await randao.follow.call(0, {from: follower1, value: deposit});
-        h.mineBlocks(9);
+        await h.waitBlocks(9);
         secret = new web3.utils.BN('131242344353464564564574574567456');
         commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
         await randao.commit(0, commitment, {from: committer1, value: deposit});
-        h.mineBlocks(5);
+        await h.waitBlocks(6);
         await randao.reveal(0, secret, {from: committer1});
       });
 
@@ -289,13 +354,13 @@ contract('Randao', (accounts) => {
       beforeEach(async () => {
         await h.setupNewCampaign(randao, consumer);
         await randao.follow.call(0, {from: follower1, value: deposit});
-        h.mineBlocks(9);
+        await h.waitBlocks(9);
         secret = new web3.utils.BN('131242344353464564564574574567456');
         commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
         await randao.commit(0, commitment, {from: committer1, value: deposit});
-        h.mineBlocks(5);
+        await h.waitBlocks(6);
         await randao.reveal(0, secret, {from: committer1});
-        h.mineBlocks(5);
+        await h.waitBlocks(5);
       });
 
       it('returns the random number', async () => {
@@ -304,7 +369,7 @@ contract('Randao', (accounts) => {
       });
 
       it('returns the random number after the bounty phase', async () => {
-        h.mineBlocks(15);
+        await h.waitBlocks(15);
         const random = await randao.getRandom.call(0, {from: consumer});
         assert.equal(random.toString(), secret.toString());
       });
@@ -316,14 +381,14 @@ contract('Randao', (accounts) => {
       beforeEach(async () => {
         await h.setupNewCampaign(randao, consumer);
         await randao.follow.call(0, {from: follower1, value: deposit});
-        h.mineBlocks(9);
+        await h.waitBlocks(9);
         secret = new web3.utils.BN('131242344353464564564574574567456');
         commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
         await randao.commit(0, commitment, {from: committer1, value: deposit});
-        h.mineBlocks(5);
+        await h.waitBlocks(6);
         await randao.reveal(0, secret, {from: committer1});
-        h.mineBlocks(5);
-        await randao.getRandom.call(0, {from: consumer});
+        await h.waitBlocks(5);
+        await randao.getRandom(0, {from: consumer});
       });
 
       it('gives the bounty to committers', async () => {
@@ -341,11 +406,11 @@ contract('Randao', (accounts) => {
       beforeEach(async () => {
         await h.setupNewCampaign(randao, consumer);
         await randao.follow.call(0, {from: follower1, value: deposit});
-        h.mineBlocks(9);
+        await h.waitBlocks(9);
         secret = new web3.utils.BN('131242344353464564564574574567456');
         commitment = await randao.shaCommit(secret.toString(10), {from: committer1});
         await randao.commit(0, commitment, {from: committer1, value: deposit});
-        h.mineBlocks(8);
+        await h.waitBlocks(8);
       });
 
       it('refunds the consumer', async () => {

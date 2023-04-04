@@ -1,0 +1,18 @@
+{
+	"founder": {
+		"secret":"b501fc5879f214ee8be2832e43955ac0f19e20d1f7e33436d6746ac889dc043d",
+		"account": "0xA405BA2b64DC04466E0f23487FD1c4A084787326"
+	},
+	"follower": {
+		"secret":"9c6469da0ea992c1f3d4b635d61cb9d855279490cff6fc1024c58d293371097a",
+		"account": "0x6ABcc61451EAFb3be3a4057C1c3c2BFe7D82D37E"
+	},
+	"consumer": {
+		"secret":"9b1b56f8be67d1f00b18c1822600df35cdb75d3137460126e5c1c7e85be4f09d",
+		"account": "0x74d1F7A13d7e51CfE104Fd6bFaBD38B060780869"
+	},
+	"committer": {
+		"secret":"b45982e7622c5ac0682565f9162f7096b3f11fac5d0647fdbf4bac2ca7afbf72",
+		"account": "0x5e9248E7BB5625db46686aCF7B98c5F370e97C31"
+	}
+}
